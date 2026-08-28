@@ -13,11 +13,11 @@
 
 | # | 標題 | 時長 | 頁數 | 投影片 | 逐字稿 | 練習腳本 |
 |---|---|---|---|---|---|---|
-| Q1 | 觀念篇：單細胞 RNA 定序在看什麼、怎麼運作、怎麼讀圖 | 30 分 | 44 | [pptx](slides/Q1_觀念篇_投影片_ZH.pptx) | [docx](docx/Q1_觀念篇_逐字稿.docx) | — |
-| Q2 | 實作篇 I：單一樣本的標準流程——從矩陣到細胞型別 | 55 分 | 69 | [pptx](slides/Q2_實作篇I_單一樣本標準流程_投影片_ZH.pptx) | [docx](docx/Q2_實作篇I_單一樣本標準流程_逐字稿.docx) | [00–03](R/) |
-| Q3 | 實作篇 II：多樣本分析——整合、細胞身分判定、差異表達與下游 | 70 分 | 88 | [pptx](slides/Q3_實作篇II_多樣本分析_投影片_ZH.pptx) | [docx](docx/Q3_實作篇II_多樣本分析_逐字稿.docx) | [04–10](R/) |
+| Q1 | 觀念篇：單細胞 RNA 定序在看什麼、怎麼運作、怎麼讀圖 | 30 分 | 44 | [中文](slides/Q1_觀念篇_投影片_ZH.pptx) ｜ [EN](slides/Q1_Concepts_EN.pptx) | [中文](docx/Q1_觀念篇_逐字稿.docx) ｜ [EN](docx/Q1_Concepts_Script_EN.docx) | — |
+| Q2 | 實作篇 I：單一樣本的標準流程——從矩陣到細胞型別 | 55 分 | 69 | [中文](slides/Q2_實作篇I_單一樣本標準流程_投影片_ZH.pptx) ｜ [EN](slides/Q2_Single_Sample_Pipeline_EN.pptx) | [中文](docx/Q2_實作篇I_單一樣本標準流程_逐字稿.docx) ｜ [EN](docx/Q2_HandsOn_I_Script_EN.docx) | [00–03](R/) |
+| Q3 | 實作篇 II：多樣本分析——整合、細胞身分判定、差異表達與下游 | 70 分 | 88 | [中文](slides/Q3_實作篇II_多樣本分析_投影片_ZH.pptx) ｜ [EN](slides/Q3_Multi_Sample_Analysis_EN.pptx) | [中文](docx/Q3_實作篇II_多樣本分析_逐字稿.docx) ｜ [EN](docx/Q3_HandsOn_II_Script_EN.docx) | [04–10](R/) |
 
-影片連結：錄製中，上線後補。三份投影片共 201 頁，皆含逐頁備忘稿；完整大綱見 [`docx/Q系列_總索引.md`](docx/Q系列_總索引.md)。
+影片連結：錄製中，上線後補。三份投影片共 201 頁，**中英雙語各一套**、皆含逐頁備忘稿（英文版的備忘稿與逐字稿為完整英譯）；完整大綱見 [`docx/Q系列_總索引.md`](docx/Q系列_總索引.md)。
 
 **九句話骨架**——整門課要帶走的東西：
 
@@ -104,8 +104,8 @@
 scRNA-seq-tutorial-Qseries/
 ├── README.md
 ├── LICENSE                  # 程式碼：MIT
-├── slides/                  # 三份投影片 pptx（含逐頁備忘稿）
-├── docx/                    # 三份逐字稿 + 總索引（docx / md）
+├── slides/                  # 投影片 pptx，中英各三份（含逐頁備忘稿）
+├── docx/                    # 逐字稿中英各三份 + 總索引（docx / md）
 ├── R/                       # 十二支練習腳本（完整版）+ 練習手冊
 │   └── 練習版/              # 關鍵參數挖空版（## TODO ▶ 提示）
 └── quiz/                    # 自測題庫資料檔
