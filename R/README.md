@@ -56,20 +56,20 @@
 - [`R/`](R/) — **完整版（解答）**，從頭跑到尾。
 - [`R/練習版/`](R/練習版/) — 影片裡講過「為什麼」的關鍵參數挖空成 `____`，空格上方有 `## TODO ▶` 提示與投影片頁碼；填完再跑，跑不通對照完整版。
 
-| 腳本 | 做什麼 | 投影片&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | 運行時間&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |
+| 腳本 | 做什麼 | 投影片&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | 運行時間&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |
 |---|---|---|---|
-| [`00_setup.R`](R/00_setup.R) | 裝套件（CRAN + Bioconductor + GitHub）、下載兩份資料與基因座標檔、建資料夾 | Q2&nbsp;P7–8 | 10–20&nbsp;分 |
-| [`01_qc.R`](R/01_qc.R) | （選做 SoupX）→ Read10X → 初探 → QC 三指標 → MAD 三條線 → scDblFinder | Q2&nbsp;P8–22 | 3–5&nbsp;分 |
-| [`02_cluster.R`](R/02_cluster.R) | 前處理四行 + 週期分數 → PC1 檢查 → nPC → 解析度掃描 + clustree → 穩定性三檢查 | Q2&nbsp;P25–36 | 3–5&nbsp;分 |
-| [`03_annotate.R`](R/03_annotate.R) | 門牌基因 → marker 面板 → FindAllMarkers → SingleR → 掛名字 → 免疫亞群重跑 → Neftel 分數 → 品質檢查 → 交付 | Q2&nbsp;P38–59 | 10–15&nbsp;分 |
-| [`04_multipatient.R`](R/04_multipatient.R) | 載入 GSE84465 counts + metadata → 未整合基線 → Seurat CCA（預設）+ Harmony（比較）→ 正負對照 → LISI | Q3&nbsp;P8–17 | 5–10&nbsp;分 |
-| [`05_infercnv.R`](R/05_infercnv.R) | inferCNV（參考 = 免疫 + 寡樹突）→ CNV 分數與相關 → 三角驗證 → 與作者標籤對答案 | Q3&nbsp;P20–26 | 10–30&nbsp;分 |
-| [`06a_pseudobulk_gsea.R`](R/06a_pseudobulk_gsea.R) | propeller 組成 → 每型別 pseudobulk + 配對 DESeq2（ashr 收縮）→ 火山圖 → GSEA（Hallmark/GO/KEGG）+ ORA → NES 熱圖 | Q3&nbsp;P29–47 | 5–10&nbsp;分 |
-| [`06b_cell_level_de.R`](R/06b_cell_level_de.R) | 不能 pseudobulk 時的備案：Wilcoxon 基準 → MAST + 病人共變量 → 逐病人一致性 → 標籤置換 → 標註限制交付 | Q3&nbsp;P48–49 | 3–5&nbsp;分 |
-| [`07_cellchat.R`](R/07_cellchat.R) | 每樣本各跑 CellChat → 六種圖 → mergeCellChat 兩條件比較 → LIANA 共識交叉驗證 | Q3&nbsp;P54–65 | 每樣本&nbsp;5–15&nbsp;分 |
-| [`08_trajectory.R`](R/08_trajectory.R) | 單一病人惡性細胞的軌跡：Slingshot → tradeSeq → Monocle3/Monocle2 比較（含手動選起點）→ 穩健性 | Q3&nbsp;P66–69 | 5–10&nbsp;分 |
-| [`09_activity.R`](R/09_activity.R) | decoupleR/PROGENy 路徑活性 → 以病人為單位的配對比較 → SCENIC（選配） | Q3&nbsp;P70–72 | 2&nbsp;分 |
-| [`10_deconv_survival.R`](R/10_deconv_survival.R) | MuSiC 以單細胞為參考反卷積 TCGA-GBM → KM / Cox 存活分析 | Q3&nbsp;P73–75 | 15&nbsp;分（含下載） |
+| [`00_setup.R`](R/00_setup.R) | 裝套件（CRAN + Bioconductor + GitHub）、下載兩份資料與基因座標檔、建資料夾 | Q2<br>P7–8 | 10–20&nbsp;分 |
+| [`01_qc.R`](R/01_qc.R) | （選做 SoupX）→ Read10X → 初探 → QC 三指標 → MAD 三條線 → scDblFinder | Q2<br>P8–22 | 3–5&nbsp;分 |
+| [`02_cluster.R`](R/02_cluster.R) | 前處理四行 + 週期分數 → PC1 檢查 → nPC → 解析度掃描 + clustree → 穩定性三檢查 | Q2<br>P25–36 | 3–5&nbsp;分 |
+| [`03_annotate.R`](R/03_annotate.R) | 門牌基因 → marker 面板 → FindAllMarkers → SingleR → 掛名字 → 免疫亞群重跑 → Neftel 分數 → 品質檢查 → 交付 | Q2<br>P38–59 | 10–15&nbsp;分 |
+| [`04_multipatient.R`](R/04_multipatient.R) | 載入 GSE84465 counts + metadata → 未整合基線 → Seurat CCA（預設）+ Harmony（比較）→ 正負對照 → LISI | Q3<br>P8–17 | 5–10&nbsp;分 |
+| [`05_infercnv.R`](R/05_infercnv.R) | inferCNV（參考 = 免疫 + 寡樹突）→ CNV 分數與相關 → 三角驗證 → 與作者標籤對答案 | Q3<br>P20–26 | 10–30&nbsp;分 |
+| [`06a_pseudobulk_gsea.R`](R/06a_pseudobulk_gsea.R) | propeller 組成 → 每型別 pseudobulk + 配對 DESeq2（ashr 收縮）→ 火山圖 → GSEA（Hallmark/GO/KEGG）+ ORA → NES 熱圖 | Q3<br>P29–47 | 5–10&nbsp;分 |
+| [`06b_cell_level_de.R`](R/06b_cell_level_de.R) | 不能 pseudobulk 時的備案：Wilcoxon 基準 → MAST + 病人共變量 → 逐病人一致性 → 標籤置換 → 標註限制交付 | Q3<br>P48–49 | 3–5&nbsp;分 |
+| [`07_cellchat.R`](R/07_cellchat.R) | 每樣本各跑 CellChat → 六種圖 → mergeCellChat 兩條件比較 → LIANA 共識交叉驗證 | Q3<br>P54–65 | 每樣本&nbsp;5–15&nbsp;分 |
+| [`08_trajectory.R`](R/08_trajectory.R) | 單一病人惡性細胞的軌跡：Slingshot → tradeSeq → Monocle3/Monocle2 比較（含手動選起點）→ 穩健性 | Q3<br>P66–69 | 5–10&nbsp;分 |
+| [`09_activity.R`](R/09_activity.R) | decoupleR/PROGENy 路徑活性 → 以病人為單位的配對比較 → SCENIC（選配） | Q3<br>P70–72 | 2&nbsp;分 |
+| [`10_deconv_survival.R`](R/10_deconv_survival.R) | MuSiC 以單細胞為參考反卷積 TCGA-GBM → KM / Cox 存活分析 | Q3<br>P73–75 | 15&nbsp;分（含下載） |
 
 使用說明、作業格式與**常見錯誤對照表**見 [`R/練習手冊.md`](R/練習手冊.md)。
 
@@ -77,10 +77,10 @@
 
 三份公開資料，前兩份由 `00_setup.R` 自動下載（失敗時腳本內附手動下載位置）：
 
-| 資料 | 內容 | 用在&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | 大小&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |
+| 資料 | 內容 | 用在&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | 大小&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |
 |---|---|---|---|
-| 10x GBM 5k（[10x Datasets](https://www.10xgenomics.com/datasets)） | 一位 GBM 病人，10x 3' v3，5,604 顆 | Q2：01–03 | ≈&nbsp;30&nbsp;MB |
-| [GSE84465](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE84465)（Darmanis et al. 2017） | 4 病人 × 核心/邊緣，Smart-seq2，3,589 顆，含作者標籤 | Q3：04–09 | ≈&nbsp;20&nbsp;MB |
+| 10x GBM 5k<br>（[10x Datasets](https://www.10xgenomics.com/datasets)） | 一位 GBM 病人，10x 3' v3，5,604 顆 | Q2：01–03 | ≈&nbsp;30&nbsp;MB |
+| [GSE84465](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE84465)<br>（Darmanis et al. 2017） | 4 病人 × 核心/邊緣，Smart-seq2，3,589 顆，含作者標籤 | Q3：04–09 | ≈&nbsp;20&nbsp;MB |
 | TCGA-GBM | bulk RNA-seq + 臨床存活，`10_deconv_survival.R` 經 TCGAbiolinks 下載 | Q3：10 | ≈&nbsp;1&nbsp;GB |
 
 本倉庫不含任何資料檔與分析輸出（見 `.gitignore`）。
