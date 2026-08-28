@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Q 系列 · 自測題庫</title>
+<style>
+  :root {
+    --ink: #1f2d33; --muted: #6b7a80; --bg: #f5f7f6; --card: #ffffff;
+    --green: #1A6B5A; --green-dark: #145245; --green-light: #E2F3F0;
+    --mint: #30C5A6; --red: #C0392B; --red-light: #FAE7E4; --line: #dde5e2;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif;
+         background: var(--bg); color: var(--ink); line-height: 1.65; padding-bottom: 4rem; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 1rem; }
+  header { background: var(--green-dark); color: #fff; padding: 1.6rem 0 1.3rem; }
+  header h1 { font-size: 1.35rem; font-weight: 700; }
+  header p { color: #bfe0d8; font-size: .9rem; margin-top: .25rem; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  .lang button { background: transparent; border: 1px solid #ffffff66; color: #fff; padding: .3rem .8rem;
+                 border-radius: 999px 0 0 999px; cursor: pointer; font-size: .85rem; }
+  .lang button + button { border-radius: 0 999px 999px 0; border-left: none; }
+  .lang button.on { background: #fff; color: var(--green-dark); font-weight: 700; }
+  nav { display: flex; gap: .5rem; margin: 1.1rem 0 .4rem; flex-wrap: wrap; }
+  nav button { background: var(--card); border: 1px solid var(--line); padding: .45rem 1rem;
+               border-radius: 999px; cursor: pointer; font-size: .92rem; color: var(--ink); }
+  nav button.on { background: var(--green); border-color: var(--green); color: #fff; font-weight: 700; }
+  .score { font-size: .9rem; color: var(--muted); margin: .3rem 0 1rem; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+  .score b { color: var(--green-dark); }
+  .score button { background: none; border: 1px solid var(--line); border-radius: 6px; padding: .2rem .7rem;
+                  cursor: pointer; color: var(--muted); font-size: .85rem; }
+  .q { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+       padding: 1.1rem 1.2rem; margin-bottom: 1rem; }
+  .q .stem { font-weight: 700; margin-bottom: .8rem; }
+  .q .stem .no { color: var(--green); margin-right: .4rem; }
+  .opt { display: block; width: 100%; text-align: left; background: #fafcfb; border: 1px solid var(--line);
+         border-radius: 8px; padding: .55rem .8rem; margin: .4rem 0; cursor: pointer; font-size: .95rem;
+         color: var(--ink); line-height: 1.5; }
+  .opt:hover { border-color: var(--mint); }
+  .opt .key { font-weight: 700; color: var(--green); margin-right: .5rem; }
+  .q.done .opt { cursor: default; opacity: .75; }
+  .q.done .opt.correct { background: var(--green-light); border-color: var(--green); opacity: 1; }
+  .q.done .opt.wrong   { background: var(--red-light); border-color: var(--red); opacity: 1; }
+  .q.done .opt.correct .key::after { content: " ✓"; }
+  .q.done .opt.wrong .key::after   { content: " ✗"; color: var(--red); }
+  .exp { display: none; margin-top: .7rem; padding: .7rem .9rem; border-left: 4px solid var(--mint);
+         background: var(--green-light); border-radius: 0 8px 8px 0; font-size: .92rem; }
+  .q.done .exp { display: block; }
+  .verdict { display: none; font-weight: 700; margin-top: .6rem; font-size: .95rem; }
+  .q.done .verdict { display: block; }
+  .verdict.ok { color: var(--green-dark); } .verdict.no { color: var(--red); }
+  .summary { display: none; background: var(--green-dark); color: #fff; border-radius: 10px;
+             padding: 1rem 1.2rem; margin: 1.2rem 0; font-size: 1rem; }
+  .summary.show { display: block; }
+  footer { color: var(--muted); font-size: .8rem; margin-top: 2rem; }
+</style>
+</head>
+<body>
+<header><div class="wrap topbar">
+  <div><h1 id="t-title"></h1><p id="t-sub"></p></div>
+  <div class="lang"><button id="b-zh" class="on" onclick="setLang('zh')">中文</button><button id="b-en" onclick="setLang('en')">EN</button></div>
+</div></header>
+
+<div class="wrap">
+  <nav id="tabs"></nav>
+  <div class="score"><span id="t-score"></span><button id="t-reset" onclick="resetChapter()"></button></div>
+  <div class="summary" id="summary"></div>
+  <div id="list"></div>
+  <footer id="t-foot"></footer>
+</div>
+
+<script src="Q系列_自測題庫_data.js"></script>
+<script>
+  const SERIES = Object.keys(subjects)[0];
+  const CHAPTERS = Object.keys(subjects[SERIES]);
+  const UI = {
+    zh: { title: "Q 系列 · 快速上手篇 — 自測題庫", sub: "27 題單選：每章前 3 題與影片內自測相同",
+          score: (a, n, c) => `本章 ${n} 題 ｜ 已作答 <b>${a}</b> ｜ 答對 <b>${c}</b>`,
+          reset: "重新作答", foot: "題目資料：quiz/Q系列_自測題庫_data.js ｜ scRNA-seq 教學影片系列 · Q 系列",
+          ok: "答對了", no: k => `答錯——正確答案是 ${k}`,
+          done: (c, n) => `本章完成：${c} / ${n}` },
+    en: { title: "Series Q · Quick Start — Self-test", sub: "27 single-choice questions; the first 3 per chapter match the in-video self-tests",
+          score: (a, n, c) => `${n} questions ｜ answered <b>${a}</b> ｜ correct <b>${c}</b>`,
+          reset: "Reset chapter", foot: "Question data: quiz/Q系列_自測題庫_data.js ｜ scRNA-seq video series · Series Q",
+          ok: "Correct", no: k => `Incorrect — the answer is ${k}`,
+          done: (c, n) => `Chapter complete: ${c} / ${n}` },
+  };
+  let lang = "zh", chapter = CHAPTERS[0];
+  const state = {};   // chapter -> {answers: {idx: pickedKey}}
+  CHAPTERS.forEach(c => state[c] = { answers: {} });
+
+  function chapLabel(c) { return lang === "en" && typeof labels_en !== "undefined" && labels_en[c] ? labels_en[c] : c; }
+  function f(q, k) { return lang === "en" && q[k + "_en"] ? q[k + "_en"] : q[k]; }
+
+  function setLang(l) { lang = l;
+    document.getElementById("b-zh").classList.toggle("on", l === "zh");
+    document.getElementById("b-en").classList.toggle("on", l === "en");
+    render(); }
+  function setChapter(c) { chapter = c; render(); }
+  function resetChapter() { state[chapter].answers = {}; render(); }
+
+  function pick(i, key) {
+    if (state[chapter].answers[i] !== undefined) return;
+    state[chapter].answers[i] = key; render();
+  }
+
+  function render() {
+    const t = UI[lang], qs = subjects[SERIES][chapter], st = state[chapter].answers;
+    document.getElementById("t-title").textContent = t.title;
+    document.getElementById("t-sub").textContent = t.sub;
+    document.getElementById("t-reset").textContent = t.reset;
+    document.getElementById("t-foot").textContent = t.foot;
+    document.getElementById("tabs").innerHTML = CHAPTERS.map(c =>
+      `<button class="${c === chapter ? "on" : ""}" onclick="setChapter('${c}')">${chapLabel(c)}（${subjects[SERIES][c].length}）</button>`).join("");
+    const answered = Object.keys(st).length;
+    const correct = Object.entries(st).filter(([i, k]) => qs[i].ans === k).length;
+    document.getElementById("t-score").innerHTML = t.score(answered, qs.length, correct);
+    const sm = document.getElementById("summary");
+    sm.classList.toggle("show", answered === qs.length);
+    sm.textContent = t.done(correct, qs.length);
+    document.getElementById("list").innerHTML = qs.map((q, i) => {
+      const done = st[i] !== undefined, picked = st[i];
+      const opts = ["A", "B", "C", "D"].filter(k => q[k]).map(k => {
+        let cls = "opt";
+        if (done && k === q.ans) cls += " correct";
+        else if (done && k === picked && picked !== q.ans) cls += " wrong";
+        return `<button class="${cls}" onclick="pick(${i},'${k}')"><span class="key">${k}</span>${f(q, k)}</button>`;
+      }).join("");
+      const verdict = done ? (picked === q.ans
+        ? `<div class="verdict ok">✓ ${t.ok}</div>` : `<div class="verdict no">✗ ${t.no(q.ans)}</div>`) : "";
+      return `<div class="q${done ? " done" : ""}">
+        <div class="stem"><span class="no">${i + 1}.</span>${f(q, "stem")}</div>
+        ${opts}${verdict}<div class="exp">${f(q, "exp")}</div></div>`;
+    }).join("");
+  }
+  render();
+</script>
+</body>
+</html>
