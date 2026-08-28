@@ -17,7 +17,7 @@
 | Q2 | 實作篇 I：單一樣本的標準流程——從矩陣到細胞型別 | [中文](slides/Q2_實作篇I_單一樣本標準流程_投影片_ZH.pdf)&nbsp;｜&nbsp;[EN](slides/Q2_Single_Sample_Pipeline_EN.pdf) | [00–03](R/) |
 | Q3 | 實作篇 II：多樣本分析——整合、細胞身分判定、差異表達與下游 | [中文](slides/Q3_實作篇II_多樣本分析_投影片_ZH.pdf)&nbsp;｜&nbsp;[EN](slides/Q3_Multi_Sample_Analysis_EN.pdf) | [04–10](R/) |
 
-影片連結：錄製中，上線後補。三份投影片共 201 頁，**中英雙語各一套**（PDF）；完整大綱見 [`docx/Q系列_總索引.md`](docx/Q系列_總索引.md)。
+影片連結：錄製中，上線後補。三份投影片共 201 頁，**中英雙語各一套**（PDF）。
 
 **九句話骨架**——整門課要帶走的東西：
 
@@ -54,7 +54,7 @@
 每支腳本可獨立閱讀：開頭註明對應投影片頁碼、輸入輸出與預估時間，結尾附 4–6 題練習（含進階題）。兩個版本：
 
 - [`R/`](R/) — **完整版（解答）**，從頭跑到尾。
-- [`R/練習版/`](R/練習版/) — 影片裡講過「為什麼」的關鍵參數挖空成 `____`，空格上方有 `## TODO ▶` 提示與投影片頁碼；填完再跑，跑不通對照完整版。
+- [`R/練習版/`](R/練習版/) — 投影片裡講過「為什麼」的關鍵參數挖空成 `____`，空格上方有 `## TODO ▶` 提示與投影片頁碼；填完再跑，跑不通對照完整版。
 
 | 腳本 | 做什麼 | 投影片&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | 運行時間&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |
 |---|---|---|---|
@@ -96,12 +96,7 @@
 
 ## 自測題庫
 
-27 題單選（Q1 7 題、Q2 9 題、Q3 11 題），中英對照，含影片內自測題與踩雷區、腳本練習的延伸題。**互動版**在 [`quiz/index.html`](quiz/index.html)——即點即答、附解析、可切換中英文。兩種用法：
-
-- **線上作答**：到倉庫的 Settings → Pages，把 Source 設為 `main` 分支後，題庫會發布在 `https://<你的帳號>.github.io/scRNA-seq-tutorial-Qseries/quiz/`。
-- **本機作答**：下載（Clone）倉庫後直接雙擊 `quiz/index.html`。
-
-題目資料在 [`quiz/Q系列_自測題庫_data.js`](quiz/Q系列_自測題庫_data.js)，新增題目後重新整理網頁即可。
+27 題單選（Q1 7 題、Q2 9 題、Q3 11 題），中英對照，含影片內自測題與踩雷區、腳本練習的延伸題。互動題庫在 [`quiz/`](quiz/)：把資料夾下載到電腦後，點擊 `index.html` 即可開啟作答——即點即答、附解析、可切換中英文。
 
 ## 目錄結構
 
