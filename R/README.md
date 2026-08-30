@@ -14,16 +14,16 @@
 | # | 標題 | 投影片 | 練習腳本 |
 |---|---|---|---|
 | Q1 | 觀念篇：單細胞 RNA 定序在看什麼、怎麼運作、怎麼讀圖 | [中文](slides/Q1_觀念篇_投影片_ZH.pdf)&nbsp;｜&nbsp;[EN](slides/Q1_Concepts_EN.pdf) | — |
-| Q2 | 實作篇 I：單一樣本的標準流程——從矩陣到細胞型別 | [中文](slides/Q2_實作篇I_單一樣本標準流程_投影片_ZH.pdf)&nbsp;｜&nbsp;[EN](slides/Q2_Single_Sample_Pipeline_EN.pdf) | [00–03](R/) |
-| Q3 | 實作篇 II：多樣本分析——整合、細胞身分判定、差異表達與下游 | [中文](slides/Q3_實作篇II_多樣本分析_投影片_ZH.pdf)&nbsp;｜&nbsp;[EN](slides/Q3_Multi_Sample_Analysis_EN.pdf) | [04–10](R/) |
+| Q2 | 實作篇 I：單一樣本標準流程——從原始矩陣到細胞註釋 | [中文](slides/Q2_實作篇I_單一樣本標準流程_投影片_ZH.pdf)&nbsp;｜&nbsp;[EN](slides/Q2_Single_Sample_Pipeline_EN.pdf) | [00–03](R/) |
+| Q3 | 實作篇 II：多樣本整合與下游分析 | [中文](slides/Q3_實作篇II_多樣本分析_投影片_ZH.pdf)&nbsp;｜&nbsp;[EN](slides/Q3_Multi_Sample_Analysis_EN.pdf) | [04–10](R/) |
 
 影片連結：錄製中，上線後補。三份投影片共 201 頁，**中英雙語各一套**（PDF）。
 
 **九句話骨架**——整門課要帶走的東西：
 
 1. 腫瘤是生態系，單細胞把它拆開；分析在 PC 空間，UMAP 只是投影；惡性看基因體，病人是統計單位。（Q1）
-2. 每個參數是一個假設：有數字、有理由、有紀錄；惡性標籤先誠實地寫「待 CNV」。（Q2）
-3. 整合只給正常細胞；惡性看 CNV、按病人看；DE 的單位是病人；DE 之後每條路都要對的資料。（Q3）
+2. 每個參數是一個假設：有數字、有理由、有紀錄；註釋先確定譜系，惡性與否留待多重證據共同判定。（Q2）
+3. 整合的目的是對齊各樣本的共同細胞型別；惡性細胞帶病人特異的基因體變異，宜逐病人分析；差異表達以病人為統計單位；下游分析各有其適用的資料條件。（Q3）
 
 ## 適合誰
 
@@ -39,15 +39,15 @@
 
 ### Q1 · 觀念篇（44 頁，無腳本）
 
-從一位 58 歲 GBM 病人的切片出發，建立三個心智模型：腫瘤（組織）是什麼、資料從哪裡來、分析流程在做什麼。內容包括：bulk 定序看到什麼、漏掉什麼；從組織到矩陣（解離、四種平台、GEM、barcode/UMI、稀疏與兩種零、實驗設計三個數字）；九步流程各在做什麼、PC 空間與 UMAP 的關係；腫瘤資料的兩個特有現象（惡性細胞按病人分群、惡性與否要靠 CNV 判定）；怎麼讀圖與讀論文（UMAP 能說與不能說的、dotplot、FeaturePlot、四種常見誤讀、讀論文五問）；三個新手雷區與三句總結。
+從一位 58 歲 GBM 病人的切片出發，建立三個心智模型：腫瘤（組織）是什麼、資料從哪裡來、分析流程在做什麼。內容包括：Bulk 定序看到什麼、漏掉什麼；從組織到矩陣（解離、四種平台、GEM、barcode/UMI、稀疏與兩種零、實驗設計三個數字）；九步流程各在做什麼、PC 空間與 UMAP 的關係；腫瘤資料的兩個特有現象（惡性細胞按病人分群、惡性與否需要基因體層級的證據）；怎麼讀圖與讀論文（UMAP 能說與不能說的、dotplot、FeaturePlot、四種常見誤讀、讀論文五問）；三個常見錯誤與三句總結。
 
-### Q2 · 實作篇 I：單一樣本的標準流程（69 頁，腳本 00–03）
+### Q2 · 實作篇 I：單一樣本標準流程——從原始矩陣到細胞註釋（69 頁，腳本 00–03）
 
 資料：10x 官方 GBM 5k（一位病人，Chromium 3' v3，5,604 顆細胞）。從讀檔做到「每群有名字、惡性細胞有狀態分數」，每個參數答得出為什麼。內容包括：環境安裝與資料初探（含環境 RNA 與 SoupX）；QC 三指標與 MAD 動態閾值、scDblFinder 抓 doublet；前處理四行與細胞週期分數、LogNormalize vs SCT、nPC 怎麼選；分群解析度掃描與 clustree、群穩定性三檢查；細胞註釋的完整工作流（門牌基因、marker 面板、FindAllMarkers、SingleR、層級式註釋與亞群重跑、免疫亞群面板、Neftel 四狀態三種打分數算法、三層命名規範、常見誤註釋）；方法段模板與交付清單。
 
-### Q3 · 實作篇 II：多樣本分析（88 頁，腳本 04–10）
+### Q3 · 實作篇 II：多樣本整合與下游分析（88 頁，腳本 04–10）
 
-資料：GSE84465（Darmanis et al. 2017；4 位 GBM 病人 × 腫瘤核心/浸潤邊緣，Smart-seq2，3,589 顆，含作者的細胞型別標籤——可以「對答案」）＋ TCGA-GBM bulk。內容包括：多病人整合的兩難與方法地圖（Seurat CCA 為預設、Harmony 作比較、正負對照與 LISI）；inferCNV 判定惡性（CNV 分數與相關、四象限、三角驗證、與作者標籤對答案）；組成分析（propeller）；差異表達正確做法（pseudoreplication 為什麼錯、每型別各自 pseudobulk + 配對 DESeq2、三種 log2FC 的用途、火山圖讀法、不能 pseudobulk 時的 cell-level 備案與三道防線）；富集分析（ORA vs GSEA、Hallmark/GO/KEGG、NES 熱圖與 dotplot 讀法、五個常見錯）；細胞通訊（CellChat 六種圖的畫法與讀法、兩條件比較、LIANA 交叉驗證）；軌跡分析（Slingshot + tradeSeq、Monocle3/Monocle2 比較、手動選起點）；路徑與 TF 活性（decoupleR/PROGENy、SCENIC）；反卷積與存活分析（MuSiC + TCGA、KM/Cox）。
+資料：GSE84465（Darmanis et al. 2017；4 位 GBM 病人 × 腫瘤核心/浸潤邊緣，Smart-seq2，3,589 顆，含作者的細胞型別標籤——可以「對答案」）＋ TCGA-GBM Bulk。內容包括：多病人整合的兩難與方法地圖（Seurat CCA 為預設、Harmony 作比較、正負對照與 LISI）；inferCNV 判定惡性（CNV 分數與相關、四象限、三角驗證、與作者標籤對答案）；組成分析（propeller）；差異表達正確做法（pseudoreplication 為什麼錯、每型別各自 pseudobulk + 配對 DESeq2、三種 log2FC 的用途、火山圖讀法、不能 pseudobulk 時的 cell-level 備案與三道防線）；富集分析（ORA vs GSEA、Hallmark/GO/KEGG、NES 熱圖與 dotplot 讀法、五個常見錯）；細胞通訊（CellChat 六種圖的畫法與讀法、兩條件比較、LIANA 交叉驗證）；軌跡分析（Slingshot + tradeSeq、Monocle3/Monocle2 比較、手動選起點）；路徑與 TF 活性（decoupleR/PROGENy、SCENIC）；反卷積與存活分析（MuSiC + TCGA、KM/Cox）。
 
 ## 練習腳本（R/）
 
@@ -81,7 +81,7 @@
 |---|---|---|---|
 | 10x GBM 5k<br>（[10x Datasets](https://www.10xgenomics.com/datasets)） | 一位 GBM 病人，10x 3' v3，5,604 顆 | Q2：01–03 | ≈&nbsp;30&nbsp;MB |
 | [GSE84465](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE84465)<br>（Darmanis et al. 2017） | 4 病人 × 核心/邊緣，Smart-seq2，3,589 顆，含作者標籤 | Q3：04–09 | ≈&nbsp;20&nbsp;MB |
-| TCGA-GBM | bulk RNA-seq + 臨床存活，`10_deconv_survival.R` 經 TCGAbiolinks 下載 | Q3：10 | ≈&nbsp;1&nbsp;GB |
+| TCGA-GBM | Bulk RNA-seq + 臨床存活，`10_deconv_survival.R` 經 TCGAbiolinks 下載 | Q3：10 | ≈&nbsp;1&nbsp;GB |
 
 本倉庫不含任何資料檔與分析輸出（見 `.gitignore`）。
 
@@ -96,7 +96,15 @@
 
 ## 自測題庫
 
-27 題單選（Q1 7 題、Q2 9 題、Q3 11 題），中英對照，含影片內自測題與踩雷區、腳本練習的延伸題。互動題庫在 [`quiz/`](quiz/)：把資料夾下載到電腦後，點擊 `index.html` 即可開啟作答——即點即答、附解析、可切換中英文。
+27 題單選（Q1 7 題、Q2 9 題、Q3 11 題），中英對照，含影片內自測題與常見錯誤、腳本練習的延伸題。互動題庫在 [`quiz/`](quiz/)：把資料夾下載到電腦後，點擊 `index.html` 即可開啟作答——即點即答、附解析、可切換中英文。
+
+## 延伸課程
+
+本課程是快速上手篇；想繼續深入，同系列還有三個延伸課程（連結整理中，將陸續補上）：
+
+- **A 系列 · 入門篇**——觀念與判讀：實驗設計、圖表解讀、從結果到研究敘事。全系列不需撰寫程式，適合建立整體框架與跨領域溝通。
+- **B 系列 · 實作篇**——以 PBMC 公開資料完整實作：從 FASTQ 與 Cell Ranger 到 Seurat 標準流程與各項下游分析，隨集附練習腳本。本課程投影片各頁的「深入：Bx」即為對應索引。
+- **C 系列 · 數學篇**——方法背後的數學與統計：PCA 與降維、變異數穩定化、統計推論（pseudobulk 的理論基礎）、整合演算法的原理。
 
 ## 目錄結構
 
