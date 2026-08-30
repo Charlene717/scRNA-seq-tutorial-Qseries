@@ -2,15 +2,15 @@
 # 10_deconv_survival.R — 練習腳本 10：反卷積與存活分析（MuSiC + TCGA-GBM）——把 n = 4 帶到 n = 170
 #
 # 對應影片：Q3 頁 73–75（§1 反卷積、§2 KM 與 Cox）
-# 輸入：output/gbm4_final.rds；TCGA-GBM bulk（TCGAbiolinks 自動下載，需連網）
-# 輸出：output/10_deconv_tcga_gbm.csv、output/figs/10_km_*.pdf
+# 輸入：output/rds/06_gbm4_final.rds；TCGA-GBM Bulk（TCGAbiolinks 自動下載，需連網）
+# 輸出：output/tables/10_deconv_tcga_gbm.csv、output/figs/10_km_*.pdf
 # 時間：TCGA 下載約 10 分鐘（僅第一次），其餘約 5 分鐘
-# 這是「單細胞產生假說 → 公開世代驗證」那條路：用 4 位病人的型別比例假說，到 TCGA 的 170 份 bulk 驗證。
+# 這是「單細胞產生假說 → 公開世代驗證」那條路：用 4 位病人的型別比例假說，到 TCGA 的 170 份 Bulk 驗證。
 # =====================================================================
 library(Seurat); library(dplyr); library(ggplot2)
 set.seed(1234)
-gbm4 <- readRDS("output/gbm4_final.rds")
-dir.create("output/figs", showWarnings = FALSE, recursive = TRUE)
+gbm4 <- readRDS("output/rds/06_gbm4_final.rds")
+for (d in c("output/figs", "output/rds", "output/tables")) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
 ## ---- 1. deconvolution ----------------------------------------------- Q3 頁 75
 library(MuSiC); library(TCGAbiolinks); library(SummarizedExperiment); library(survival); library(survminer)
@@ -32,7 +32,7 @@ bulk.mtx <- assay(bulk, "unstranded"); rownames(bulk.mtx) <- rowData(bulk)$gene_
 bulk.mtx <- bulk.mtx[!duplicated(rownames(bulk.mtx)), ]
 common <- intersect(rownames(bulk.mtx), rownames(ref))
 est <- music_prop(bulk.mtx = bulk.mtx[common, ], sc.sce = ref[common, ], clusters = "celltype_l1", samples = "patient")
-prop <- as.data.frame(est$Est.prop.weighted); write.csv(prop, "output/10_deconv_tcga_gbm.csv")
+prop <- as.data.frame(est$Est.prop.weighted); write.csv(prop, "output/tables/10_deconv_tcga_gbm.csv")
 ## ---- 2. survival ---------------------------------------------------- Q3 頁 75
 # 存活：免疫（巨噬）比例上下半
 clin <- as.data.frame(colData(bulk))[rownames(prop), ]

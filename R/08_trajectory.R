@@ -2,16 +2,16 @@
 # 08_trajectory.R — 練習腳本 8：軌跡分析（Slingshot + tradeSeq）——一位病人的惡性細胞
 #
 # 對應影片：Q3 頁 66–69（§1 Slingshot + tradeSeq、§2 Monocle3 與手動選起點、§3 Monocle2 選配）
-# 輸入：output/gbm4_final.rds
-# 輸出：output/figs/08_*.pdf、output/08_traj_association.csv
+# 輸入：output/rds/06_gbm4_final.rds
+# 輸出：output/figs/08_*.pdf、output/tables/08_traj_association.csv
 # 時間：§1 約 5–10 分鐘；§2 約 2 分鐘；§3（選配）約 5–10 分鐘
 # 安裝（選配段）：見 00_setup.R——monocle3 + SeuratWrappers（GitHub）、monocle（Bioconductor）
 # 前提：軌跡假設「連續過程」；跨病人混做會把病人差異當成軌跡，所以只在一位病人的惡性細胞內做。
 # =====================================================================
 library(Seurat); library(dplyr); library(ggplot2)
 set.seed(1234)
-gbm4 <- readRDS("output/gbm4_final.rds")
-dir.create("output/figs", showWarnings = FALSE, recursive = TRUE)
+gbm4 <- readRDS("output/rds/06_gbm4_final.rds")
+for (d in c("output/figs", "output/rds", "output/tables")) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
 ## ---- 1. trajectory -------------------------------------------------- Q3 頁 67–68
 library(slingshot); library(tradeSeq)
@@ -38,7 +38,7 @@ keep   <- !is.na(mal1$pt)
 counts <- LayerData(mal1, layer = "counts")[VariableFeatures(mal1), keep]
 gam    <- fitGAM(counts = as.matrix(counts), pseudotime = mal1$pt[keep], cellWeights = rep(1, sum(keep)), nknots = 6)
 assoc  <- associationTest(gam); assoc <- assoc[order(assoc$pvalue), ]; head(assoc, 20)
-write.csv(assoc, "output/08_traj_association.csv")
+write.csv(assoc, "output/tables/08_traj_association.csv")
 # 畫 smoothers 的基因必須在 gam 模型裡（= 這個子集的 VariableFeatures）；
 # 硬寫名字會踩「不在高變異清單」的雷——先跟 rownames(counts) 取交集，不足就用 associationTest 前幾名補
 show.genes <- intersect(c("OLIG1", "SOX4", "CD44", "VIM"), rownames(counts))

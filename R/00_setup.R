@@ -23,7 +23,7 @@ bioc <- c("scDblFinder", "SingleR", "celldex", "GEOquery", "DESeq2", "apeglm", "
           "clusterProfiler", "org.Hs.eg.db", "enrichplot",   # 06 的 ORA（GO / KEGG）與富集圖
           "MAST")                                            # 06b 的 cell-level DE（病人當共變量）
 for (p in bioc) if (!requireNamespace(p, quietly = TRUE)) BiocManager::install(p, update = FALSE, ask = FALSE)
-# GitHub 上的套件：lisi（04 §5）、CellChat（07）、liana（07 §4）、MuSiC（08 §3）
+# GitHub 上的套件：DoubletFinder（01 §4）、lisi（04 §5）、CellChat（07）、liana（07 §4）、MuSiC（08 §3）
 # 常見錯誤：「HTTP error 401 Bad credentials」= 環境變數 GITHUB_PAT 裡有一個過期／無效的 token。
 # 下面的 helper 會先用匿名下載（不需要 token）；匿名有每小時 60 次的限制，超過再設定有效的 PAT。
 install_gh <- function(repo, pkg = basename(repo)) {
@@ -34,6 +34,7 @@ install_gh <- function(repo, pkg = basename(repo)) {
   if (!ok) message("    → 稍後手動執行：remotes::install_github(\"", repo, "\")；仍失敗請檢查 usethis::gh_token_help()")
   invisible(ok)
 }
+install_gh("chris-mcginnis-ucsf/DoubletFinder")   # 01 §4 的主要 doublet 工具（GitHub only）
 install_gh("immunogenomics/lisi")
 install_gh("jinworks/CellChat")          # 依賴多（NMF、circlize、ComplexHeatmap…），約 5–10 分鐘
 install_gh("saezlab/liana")
@@ -46,6 +47,8 @@ install_gh("xuranw/MuSiC")
 #   macOS  : brew install jags
 #   Ubuntu : sudo apt-get install jags
 #   Windows: https://sourceforge.net/projects/mcmc-jags/  安裝後重開 R
+# 裝好之後用下面這行確認（FALSE = JAGS 還沒裝好，05_infercnv.R 會跑不動）：
+cat("infercnv 可載入：", requireNamespace("infercnv", quietly = TRUE), "\n")
 
 library(Seurat)
 stopifnot(packageVersion("Seurat") >= "5.0.0")   # 本系列全程 Seurat v5
@@ -54,7 +57,7 @@ cat("Seurat", as.character(packageVersion("Seurat")), "\n")
 
 ## ---- 2. 專案結構 ---------------------------------------------------
 # 一律相對路徑；不要 setwd()。
-for (d in c("data", "R", "output", "output/figs")) dir.create(d, showWarnings = FALSE, recursive = TRUE)
+for (d in c("data", "R", "output", "output/figs", "output/rds", "output/tables")) dir.create(d, showWarnings = FALSE, recursive = TRUE)
 
 ## ---- 3. 資料 (1)：10x GBM 5k --------------------------------------
 # 官方頁面：10x Genomics Datasets → "Human Glioblastoma Multiforme: 3'v3 Whole Transcriptome Analysis"
@@ -81,7 +84,15 @@ if (!file.exists(geo.csv)) {
   options(timeout = 600)
   download.file(geo.url, geo.csv, mode = "wb")
 }
-# metadata 由 GEOquery 於 04_multipatient.R 內下載（series matrix）。
+# metadata：series matrix（04_multipatient.R 會用到）。在這裡一併抓好，04 就不必再連網。
+sm.url <- paste0("https://ftp.ncbi.nlm.nih.gov/geo/series/GSE84nnn/GSE84465/",
+                 "matrix/GSE84465_series_matrix.txt.gz")
+sm      <- "data/geo/GSE84465_series_matrix.txt.gz"
+dir.create("data/geo", recursive = TRUE, showWarnings = FALSE)
+if (!file.exists(sm) || file.size(sm) < 5e4) {        # 太小 = 上次下載被截斷，重抓（正常約 142 KB、解壓 8 MB）
+  options(timeout = 3600)
+  try(download.file(sm.url, sm, mode = "wb"))
+}
 # 若 GEO FTP 直連失敗：到 https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE84465
 # 的 Supplementary file 區手動下載同名檔案放到 data/。
 
@@ -94,7 +105,7 @@ if (!file.exists(gpos)) try(download.file(gpos.url, gpos, mode = "wb"))
 
 ## ---- 6. 檢查 --------------------------------------------------------
 cat("\n== 檔案檢查 ==\n")
-for (f in c(gbm.tar, "data/gbm5k/filtered_feature_bc_matrix/matrix.mtx.gz", geo.csv, gpos))
+for (f in c(gbm.tar, "data/gbm5k/filtered_feature_bc_matrix/matrix.mtx.gz", geo.csv, sm, gpos))
   cat(sprintf("%-60s %s\n", f, ifelse(file.exists(f), "OK", "缺少")))
 sessionInfo()
 

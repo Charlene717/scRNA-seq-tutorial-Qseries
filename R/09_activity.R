@@ -2,15 +2,15 @@
 # 09_activity.R — 練習腳本 9：路徑與轉錄因子活性（decoupleR / PROGENy、SCENIC）
 #
 # 對應影片：Q3 頁 70–72（§1 PROGENy 路徑活性與條件比較、§2 SCENIC regulon）
-# 輸入：output/gbm4_final.rds
-# 輸出：output/figs/09_*.pdf、output/09_progeny_*.csv
+# 輸入：output/rds/06_gbm4_final.rds
+# 輸出：output/figs/09_*.pdf、output/tables/09_progeny_*.csv
 # 時間：decoupleR 約 2 分鐘；SCENIC（pySCENIC，Python）數小時，為選配
 # PROGENy 問「哪條訊號路徑活著」（footprint 基因）；SCENIC 問「哪個轉錄因子在驅動」（regulon）。
 # =====================================================================
 library(Seurat); library(dplyr); library(ggplot2)
 set.seed(1234)
-gbm4 <- readRDS("output/gbm4_final.rds")
-dir.create("output/figs", showWarnings = FALSE, recursive = TRUE)
+gbm4 <- readRDS("output/rds/06_gbm4_final.rds")
+for (d in c("output/figs", "output/rds", "output/tables")) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
 ## ---- 1. pathway-activity（decoupleR / PROGENy）---------------------- Q3 頁 71–72
 library(decoupleR)
@@ -26,16 +26,16 @@ FeaturePlot(gbm4, features = c("Hypoxia", "JAK-STAT", "EGFR", "TGFb"), ncol = 4)
 pa <- gbm4@meta.data |> mutate(hyp = act.w["Hypoxia", colnames(gbm4)]) |>
       dplyr::filter(malignant == "malignant") |> group_by(patient, tissue) |> summarise(hyp = mean(hyp), .groups = "drop") |>
       tidyr::pivot_wider(names_from = tissue, values_from = hyp)
-t.test(pa$Tumor, pa$Periphery, paired = TRUE); write.csv(pa, "output/09_progeny_hypoxia_by_sample.csv", row.names = FALSE)
+t.test(pa$Tumor, pa$Periphery, paired = TRUE); write.csv(pa, "output/tables/09_progeny_hypoxia_by_sample.csv", row.names = FALSE)
 DefaultAssay(gbm4) <- "RNA"
 ## ---- 2. scenic（選配）----------------------------------------------- Q3 頁 72
 # SCENIC（pySCENIC，Python）：R 端匯出 loom，跑完讀回
-#   library(SeuratDisk); SaveLoom(gbm4, "output/09_gbm4.loom")   # 或 loomR / anndata
+#   library(SeuratDisk); SaveLoom(gbm4, "output/rds/09_gbm4.loom")   # 或 loomR / anndata
 #   pyscenic grn output/09_gbm4.loom hs_hgnc_tfs.txt -o output/09_adj.csv --num_workers 8
 #   pyscenic ctx output/09_adj.csv hg38_*.feather --annotations_fname motifs-v10.tbl --expression_mtx_fname output/09_gbm4.loom -o output/09_reg.csv
 #   pyscenic aucell output/09_gbm4.loom output/09_reg.csv -o output/09_auc.loom
-if (file.exists("output/09_scenic_auc.csv")) {                      # regulon × cell（自 auc.loom 匯出）
-  auc <- read.csv("output/09_scenic_auc.csv", row.names = 1, check.names = FALSE)
+if (file.exists("output/tables/09_scenic_auc.csv")) {                      # regulon × cell（自 auc.loom 匯出）
+  auc <- read.csv("output/tables/09_scenic_auc.csv", row.names = 1, check.names = FALSE)
   gbm4[["scenic"]] <- CreateAssayObject(as.matrix(auc)[, colnames(gbm4)])
   DoHeatmap(subset(gbm4, downsample = 100), features = c("SOX2(+)", "OLIG2(+)", "SOX10(+)", "SPI1(+)", "CEBPB(+)", "TCF7(+)", "ERG(+)"),
             assay = "scenic", group.by = "cc_label")
