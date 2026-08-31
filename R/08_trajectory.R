@@ -37,15 +37,65 @@ cor(mal1$pt, mal1$S.Score, use = "complete.obs"); cor(mal1$pt, mal1$G2M.Score, u
 keep   <- !is.na(mal1$pt)
 counts <- LayerData(mal1, layer = "counts")[VariableFeatures(mal1), keep]
 gam    <- fitGAM(counts = as.matrix(counts), pseudotime = mal1$pt[keep], cellWeights = rep(1, sum(keep)), nknots = 6)
-assoc  <- associationTest(gam); assoc <- assoc[order(assoc$pvalue), ]; head(assoc, 20)
+# 排序要用 waldStat，不能用 pvalue：本例有 38 個基因的 p 直接下溢成 0，
+# order(pvalue) 在它們之間是任意順序——TAGLN（waldStat 91）會排到第一，
+# 而真正最強的 GFAP（849）掉到第六，「前幾名」就變成假的。
+assoc  <- associationTest(gam); assoc <- assoc[order(-assoc$waldStat), ]; head(assoc, 20)
+# 兩欄不要看混，它們排出來的名次常常不一樣：
+#   waldStat  = 變化模式有多「明確」（效應量 ÷ 不確定性）——跟第 36 頁講 DESeq2 的 stat 同一個道理
+#   meanLogFC = 變化幅度有多「大」，而且是絕對值（1,335 個全正），看不出是升還是降
+# 本例：GPR37L1 幅度 4.94 卻只排第 20（waldStat 132）；COL1A2 幅度僅 0.74 卻排第 9（231）。
+# 挑基因畫圖、決定「誰在動」用 waldStat；報告效應量用 meanLogFC。
 write.csv(assoc, "output/tables/08_traj_association.csv")
-# 畫 smoothers 的基因必須在 gam 模型裡（= 這個子集的 VariableFeatures）；
-# 硬寫名字會踩「不在高變異清單」的雷——先跟 rownames(counts) 取交集，不足就用 associationTest 前幾名補
-show.genes <- intersect(c("OLIG1", "SOX4", "CD44", "VIM"), rownames(counts))
-show.genes <- head(unique(c(show.genes, rownames(assoc))), 4)
+# 畫 smoothers 的基因必須在 gam 模型裡（= 這個子集的 VariableFeatures）。那要畫哪四個？直接取關聯最強的前四名，不要自己先想好名字再去湊——
+# 原本寫死 c("OLIG1","SOX4","CD44","VIM")，結果 SOX4／CD44／VIM 根本不在這個子集的
+# 2,000 個高變異基因裡，四格有三格是被 fallback 補進來的，投影片也就對不上。
+show.genes <- head(rownames(assoc), 4)
 cat("smoothers 畫這些基因：", paste(show.genes, collapse = ", "), "\n")
 pdf("output/figs/08_smoothers.pdf", 8, 6); for (g in show.genes) print(plotSmoothers(gam, as.matrix(counts), gene = g) + ggtitle(g)); dev.off()
+
+# 每個基因是「往上走」還是「往下走」？associationTest 的 meanLogFC 是絕對值（1,335 個全正），
+# 看不出方向，得自己比 pseudotime 兩端。但這裡有個陷阱：
+# 一定要用 normalised 的 data 層，不能用 raw counts。Smart-seq2 每顆細胞的深度差好幾倍，
+# 只要深度沿著 pseudotime 遞減，raw counts 會讓「每一個基因」都看起來在下降——
+# 那不是生物學，是定序深度。（fitGAM 本身有 offset 校正深度，出問題的只有這種手動比較。）
+#
+# 這個檢查在本例的答案是「沒問題」，但還是要跑，而且要把數字記下來：
+# cor(pt, nCount_RNA) = -0.022，深度完全沒有沿軌跡走，
+# 所以前四名一致下降是真的表現量變化，不是技術假象。
+# 一個回答「沒事」的檢查不是白跑的——它是你敢下結論的依據。
+ptk <- mal1$pt[keep]; qq <- quantile(ptk, c(0.25, 0.75))
+cat("深度沿軌跡的相關性 cor(pt, nCount_RNA) =",
+    round(cor(mal1$pt, mal1$nCount_RNA, use = "complete.obs"), 3), "\n")   # 明顯偏離 0 就要小心
+dat <- LayerData(mal1, layer = "data")[show.genes, keep]        # log1p(CP10K)，已除掉深度
+trend <- t(sapply(show.genes, function(g) {
+  x <- as.numeric(dat[g, ]); c(early = mean(x[ptk <= qq[1]]), late = mean(x[ptk >= qq[2]])) }))
+print(cbind(round(trend, 2),
+            trend = ifelse(trend[, "late"] > trend[, "early"], "rises", "falls")))
+
+# 終點端到底是什麼狀態？——這一步比上面那張表更重要，卻最常被略過。
+# 我們是用 OPC 樣分數挑的「起點」，但從來沒有驗證過「終點」是不是我們以為的那個狀態。
+# 拿 Neftel 分數直接比軌跡兩端：OPC 該往終點降、MES 該往終點升，方向對了才敢說
+# 「這是一條 OPC 樣走向間質樣的軌跡」；不然這條曲線只是「有一條曲線」而已。
+cat("\n== Neftel 分數：起點端 vs 終點端 ==\n")
+print(round(c(OPC_early = mean(mal1$OPC1[keep][ptk <= qq[1]]),
+              OPC_late  = mean(mal1$OPC1[keep][ptk >= qq[2]]),
+              MES_early = mean(mal1$MES2[keep][ptk <= qq[1]]),
+              MES_late  = mean(mal1$MES2[keep][ptk >= qq[2]])), 3))
+
+# 前四名清一色下降的時候，也該看一眼「到底有沒有東西在升」——沒有的話，
+# 這條軌跡的主軸就不是「A 變成 B」，而只是「某些東西一路消失」，寫法要跟著改。
+sig  <- head(rownames(assoc), 200)
+d200 <- LayerData(mal1, layer = "data")[sig, keep]
+dd   <- data.frame(early = rowMeans(d200[, ptk <= qq[1]]), late = rowMeans(d200[, ptk >= qq[2]]),
+                   wald = assoc[sig, "waldStat"])
+dd$delta <- dd$late - dd$early
+cat("\n== 最會「升」的 10 個 ==\n"); print(round(head(dd[order(-dd$delta), ], 10), 2))
+cat("\n== 最會「降」的 10 個 ==\n"); print(round(head(dd[order(dd$delta), ], 10), 2))
+
 # 穩健性：換 seed 重跑分群 + slingshot，pseudotime 的 Spearman 相關應 > 0.8；再換一位病人看方向
+# （注意這裡的 0.8 和 §2/§3「跨工具」的 0.8 不是同一件事：同一套工具換 seed 本來就該很接近，
+#   不同工具的圖形假設不同，標準要放寬——見 §3 結尾的分級。）
 
 ## ---- 2. monocle3（含「自己選起點」的示範）--------------------------- Q3 頁 69
 # Monocle3 是最多人用的軌跡工具之一（graph-based、允許分支）。它的標準流程本來就要求你「選起點」，
@@ -70,7 +120,7 @@ if (requireNamespace("monocle3", quietly = TRUE) && requireNamespace("SeuratWrap
   p <- plot_cells(cds, color_cells_by = "pseudotime", label_branch_points = TRUE,
                   label_leaves = FALSE, label_roots = TRUE) + ggtitle("Monocle3 pseudotime")
   ggsave("output/figs/08_monocle3_pseudotime.pdf", p, width = 5.5, height = 4.5, bg = "white")
-  # 跨工具檢查：兩套 pseudotime 的 Spearman 相關高（> 0.8）→ 結論不依賴工具，可信度加分
+  # 跨工具檢查：兩套 pseudotime 的 Spearman 相關（判讀標準見 §3 結尾的分級）
   cat("Slingshot vs Monocle3 pseudotime Spearman r =",
       round(cor(mal1$pt, mal1$pt_m3, method = "spearman", use = "complete.obs"), 3), "\n")
 } else {
@@ -126,7 +176,18 @@ if (requireNamespace("monocle", quietly = TRUE)) {
 } else {
   message("未安裝 monocle（Monocle2，見 00_setup.R 的選配段），跳過 §3。")
 }
-# 三套工具的共同結論才寫進論文：起點端（OPC 樣）→ 終點端（MES 樣）的方向、以及沿路在動的基因。
+# ---- 跨工具一致性怎麼判讀：不要用單一門檻，用分級 -------------------- Q3 頁 69
+# 「Spearman r > 0.8 才可信」是流傳很廣的說法，但它是慣例不是定律，而且對「不同工具」太嚴格：
+# Slingshot 學的是一條主曲線、Monocle2 是 DDRTree 的樹、Monocle3 是 UMAP 上的圖，
+# 三者的幾何假設不一樣，即使講的是同一件生物學，數值也不會貼得那麼近。
+#   r > 0.8      強一致 → 可以直接寫「結論不依賴工具」
+#   r 0.6–0.8    方向一致但細節有差 → 要有第三個「不是 pseudotime」的獨立佐證才寫結論
+#   r < 0.6      不一致 → 先回頭查起點與細胞子集，這時不該報軌跡
+# 本例 Slingshot vs Monocle2 r = 0.757，落在中間帶，而第三個佐證我們有兩個，都在 §1 印過：
+#   終點端的狀態分數（Neftel OPC 0.437 → -0.383、MES 0.764 → 1.554）
+#   四個基因的方向（GFAP、BCAN 降；NDRG1、VEGFA 升）
+# 這兩個都不是 pseudotime 的數值，所以「OPC 樣 → MES 樣」這個結論站得住。
+# 反過來說：如果只有 r = 0.757 而沒有這兩個佐證，該寫的是「趨勢一致，待驗證」。
 
 sessionInfo()
 
@@ -137,7 +198,8 @@ sessionInfo()
 #  8-3 cor(pt, S.Score) 與 cor(pt, G2M.Score) 各是多少？若 |r| > 0.5，回歸掉週期之後軌跡還在嗎？
 #  8-4 把 PICK_ROOT_BY_HAND 改成 TRUE，在 Monocle3 的視窗裡故意點「MES 樣那端」當起點：
 #      pseudotime 反轉了嗎？跟 8-1 的結論合起來，寫一句「起點選擇影響什麼、不影響什麼」。
-#  8-5 三套工具（Slingshot / Monocle3 / Monocle2）的 pseudotime 兩兩 Spearman 相關各是多少？
+#  8-5 兩兩 Spearman 相關各是多少？照 §3 結尾的分級落在哪一格？落在中間帶時，你手上的
+#      第三個獨立佐證是什麼（提示：不能也是 pseudotime）？
 #      分支結構一致嗎？不一致時你會相信誰、為什麼？
 #  進階 手動點選（order_cells 互動視窗）跟腳本化選起點各適合什麼場景？
 #      為什麼正式分析建議「探索用手動、定稿用腳本」？
