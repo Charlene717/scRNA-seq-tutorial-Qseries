@@ -3,7 +3,7 @@
 #
 # 對應影片：Q3 頁 54–65（§1 跑一次 CellChat、§2 路徑層級與六種圖、§3 兩條件比較、§4 LIANA）
 # 輸入：output/rds/06_gbm4_final.rds（06a_pseudobulk_gsea.R；含 malignant 標籤與 type 欄）
-# 輸出：output/07_cellchat/<patient>_<tissue>_min<MIN.CELLS>.rds、output/tables/07_liana_top500.csv、output/figs/07_*.pdf
+# 輸出：output/rds/07_cellchat/<patient>_<tissue>_min<MIN.CELLS>.rds、output/tables/07_liana_top500.csv、output/figs/07_*.pdf
 # 時間：每個樣本約 5–15 分鐘（8 個樣本，建議先跑一位病人）；跑過的樣本會存成 rds，
 #       第二次執行由 REUSE.RDS 直接讀回，只有 06 的輸出更新時才重算
 # 安裝：devtools::install_github("jinworks/CellChat")；LIANA：remotes::install_github("saezlab/liana")
@@ -16,13 +16,13 @@ library(Seurat); library(dplyr); library(ggplot2); library(CellChat); library(pa
 set.seed(1234)
 ## TODO ▶ 少於幾顆細胞的群不參與通訊分析？低於門檻的群是整組被移除，不是畫得淡一點（Q3 頁 56）
 MIN.CELLS <- ____        # CellChat 建網時的細胞數門檻：低於這個數的群「整組」被移除，不是畫得淡一點
-REUSE.RDS <- TRUE      # 已經跑過的樣本直接讀 output/07_cellchat/*.rds（每個樣本 5–15 分鐘，重跑一輪要一小時）
+REUSE.RDS <- TRUE      # 已經跑過的樣本直接讀 output/rds/07_cellchat/*.rds（每個樣本 5–15 分鐘，重跑一輪要一小時）
                        # 安全性：只要 06 的輸出比快取新，就自動重跑那個樣本——不會像 inferCNV 那樣默默用舊結果
 in.rds <- "output/rds/06_gbm4_final.rds"
 gbm4 <- readRDS(in.rds)
 gbm4[["RNA"]] <- JoinLayers(gbm4[["RNA"]])                # 04 之後 RNA 是按病人分層的；合併回單一 data 層，
 if (!"data" %in% Layers(gbm4[["RNA"]])) gbm4 <- NormalizeData(gbm4)   # 否則 plotGeneExpression/VlnPlot 會拿 counts 畫
-dir.create("output/07_cellchat", showWarnings = FALSE, recursive = TRUE)
+dir.create("output/rds/07_cellchat", showWarnings = FALSE, recursive = TRUE)   # 每個樣本一個 CellChat 物件，歸在 rds/ 底下
 for (d in c("output/figs", "output/rds", "output/tables")) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
 # 通訊分析用的標籤：CNV 判定後的惡性 + 作者的正常型別；unresolved 排除
@@ -51,7 +51,7 @@ run_cc <- function(obj, label = "cc_label") {
 samples <- unique(paste(gbm4$patient, gbm4$tissue, sep = "_"))
 cc.all <- list()
 for (s in samples) {                                                        # 8 個樣本；先跑一位病人也可以
-  f <- paste0("output/07_cellchat/", s, "_min", MIN.CELLS, ".rds")           # 門檻寫進檔名：改了 MIN.CELLS 就是另一份快取，
+  f <- paste0("output/rds/07_cellchat/", s, "_min", MIN.CELLS, ".rds")           # 門檻寫進檔名：改了 MIN.CELLS 就是另一份快取，
   if (REUSE.RDS && file.exists(f) && file.mtime(f) > file.mtime(in.rds)) {   # 不會拿舊門檻算出來的網路冒充新的
     cc.all[[s]] <- readRDS(f); cat("  ", s, "讀快取\n"); next
   }

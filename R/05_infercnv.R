@@ -3,7 +3,7 @@
 #
 # 對應影片：Q3 頁 20–26（§1 輸入與執行、§2 兩個數字、§3 三角驗證）
 # 輸入：output/rds/04_gbm4_unintegrated.rds（04_multipatient.R；用「未整合」那份）
-# 輸出：output/05_infercnv/（inferCNV 原生輸出）、output/rds/05_gbm4_malignant.rds
+# 輸出：output/rds/05_infercnv/（inferCNV 原生輸出）、output/rds/05_gbm4_malignant.rds、output/figs/05_infercnv*.png
 # 時間：inferCNV 約 10–30 分鐘（denoise、無 HMM；視機器而定）
 # 注意：inferCNV 底層的 rjags 需要「系統層級」的 JAGS 程式（不是 R 套件，R 裝不了它），
 #       必須先在作業系統安裝 JAGS 4.x 再重開 R；未安裝的話本腳本會在 §1 直接停下並提示。
@@ -56,16 +56,23 @@ obj <- CreateInfercnvObject(raw_counts_matrix = cts,
 #   但只要你改了 cutoff、refs、denoise 這類參數，它「不會」重算——會安靜地把舊結果再給你一次。
 #   下面這道檢查專門擋這件事：拿輸入的 RDS 跟快取裡「最早」的步驟檔比時間。
 #   要比最早的那個：run.final 每跑一次都會重寫，看它會被騙過去。
-out.dir <- "output/05_infercnv"
+out.dir <- "output/rds/05_infercnv"       # inferCNV 的原生輸出整包放在 rds/ 底下，跟其他分析物件同一層
 in.rds  <- "output/rds/04_gbm4_unintegrated.rds"
 # STALE.OK 是「臨時通行證」，不是設定：只在你確定輸入內容其實沒變（例如上游只改了註解、
 # 只多存了幾個 csv）時暫時改成 TRUE，跑完請立刻改回 FALSE。
 # 一直放著 TRUE 等於這道檢查不存在——那正是它要防的事。
 STALE.OK <- FALSE
 steps <- list.files(out.dir, pattern = "^[0-9]{2}_.*\\.infercnv_obj$", full.names = TRUE)
-stale <- length(steps) && min(file.mtime(steps)) < file.mtime(in.rds)
+stamp <- file.path(out.dir, "_run_stamp.rds")            # 下面 §1b 寫的：這份快取是用哪個時間點的輸入算的
+# 有步驟檔就看最早那個的時間戳；步驟檔被清掉時（見 §1b）改看 stamp。兩條路都在回答同一個問題：
+# 「現在磁碟上的快取，是不是用比目前這份輸入更舊的東西算出來的？」
+stale <- {                                               # 大括號不能省：頂層的 if/else 拆行會被當成兩句
+  if (length(steps))           min(file.mtime(steps)) < file.mtime(in.rds)
+  else if (file.exists(stamp)) readRDS(stamp)$in_mtime < file.mtime(in.rds)
+  else                         FALSE                     # 全新的 out_dir，沒有快取可過期
+}
 if (stale && !STALE.OK) {
-  stop("inferCNV 快取比輸入舊：", out.dir, " 裡的中間結果是用更早版本的 ", basename(in.rds), " 算出來的。\n",
+  stop("inferCNV 快取比輸入舊：", out.dir, " 裡的結果是用更早版本的 ", basename(in.rds), " 算出來的。\n",
        "  真的換了輸入或參數 → 刪掉整個 ", out.dir, "（或換一個 out_dir）再跑。\n",
        "  確定輸入內容沒變 → 把 STALE.OK 暫時設成 TRUE 跳過這道檢查，跑完改回 FALSE。", call. = FALSE)
 }
@@ -80,13 +87,51 @@ obj <- infercnv::run(obj,
                      HMM = FALSE,                      # 亞株分析時再開（慢很多）
                      num_threads = 4)
 # 輸出的 infercnv.png 就是熱圖：上半參考（平）、下半四位病人；看 chr7 gain / chr10 loss。
+# 熱圖是 inferCNV 自己寫在 out_dir 裡的，檔名沒有腳本編號。複製一份到 figs/ 並補上 05_ 前綴，
+# 交付時所有的圖就都在同一個資料夾，不用再去翻原生輸出。
+for (f in c("infercnv.png", "infercnv.preliminary.png", "infercnv_subclusters.png")) {
+  if (file.exists(file.path(out.dir, f)))
+    file.copy(file.path(out.dir, f), file.path("output/figs", sub("^infercnv", "05_infercnv", f)), overwrite = TRUE)
+}
+
+## ---- 1b. 中間結果要不要留（磁碟 vs 續跑）----------------------------
+# 這一步不影響任何分析結果，只影響磁碟。先把事實列出來，再自己決定。
+#
+# inferCNV 每做完一步就把整個物件存一份到 out_dir。本例（4 位病人、3,589 顆細胞）：
+#   13 個中間步驟檔（01_incoming … 22_denoise、preliminary）   約 2.9 GB
+#   run.final.infercnv_obj（§2 之後唯一會讀的）                 約 95 MB
+# 細胞數越多差距越大——換成 10x 的幾萬顆，中間檔會是好幾十 GB。
+#
+# 留著的好處，只有一個：**中途失敗可以續跑**。inferCNV 下次會從最後一個成功的步驟接上去
+# （log 會出現 "Using backup from step 22"），不必從頭再跑十幾分鐘。
+# 但這個好處只在「同一組參數、跑到一半掛掉」時有用。順利跑完之後就用不到了：
+# 改了 cutoff / refs / denoise 本來就該重算，不該用舊快取。
+#
+# 清掉的代價，要看清楚：
+#   ① 之後任何一次中斷都要從第一步重跑（本例約 10–30 分鐘）。
+#   ② 上面那道「快取比輸入舊」的檢查原本靠步驟檔的時間戳。清掉之後改看
+#      下面寫的 _run_stamp.rds（幾百 bytes），檢查一樣有效——不是把安全網拿掉。
+#   ③ run.final 一定會保留，§2 之後完全不受影響；熱圖也已經複製到 figs/ 了。
+#
+# 建議：還在調參數、或機器容易中斷 → 保持 FALSE。教學跑完、確定不再改參數 → 改 TRUE 收回 2.9 GB。
+CLEAN.INTERMEDIATE <- FALSE
+saveRDS(list(in_mtime = file.mtime(in.rds), when = Sys.time()), stamp)   # 先寫 stamp，再清才安全
+if (CLEAN.INTERMEDIATE) {
+  junk <- setdiff(list.files(out.dir, pattern = "\\.infercnv_obj$", full.names = TRUE),
+                  file.path(out.dir, "run.final.infercnv_obj"))
+  if (length(junk)) {
+    cat("清掉 inferCNV 中間結果：", length(junk), "個檔案、",
+        round(sum(file.size(junk)) / 1024^3, 2), "GB；run.final.infercnv_obj 保留\n")
+    file.remove(junk)
+  }
+}
 
 ## ---- 2. cnv-score-cor ---------------------------------------------- Q3 頁 23–24
 # CNV 矩陣直接從 run() 回傳的物件拿，不要去讀 infercnv.observations.txt：
 #   那兩個文字檔只有在 plot_cnv(write_expr_matrix = TRUE) 時才會寫出來，run() 預設不寫，
 #   讀了會得到「無法開啟連接」。物件裡的 expr.data 就是同一份資料，而且省掉幾百 MB 的文字讀寫。
 # 若 R 重開過、obj 已經不在 session 裡，從 run() 存下的最終物件讀回來即可（不必重跑 inferCNV）：
-if (!exists("obj")) obj <- readRDS("output/05_infercnv/run.final.infercnv_obj")
+if (!exists("obj")) obj <- readRDS(file.path(out.dir, "run.final.infercnv_obj"))
 cnv.all <- obj@expr.data                              # 基因 × 細胞；已平滑、已 denoise，以參考為中心（≈1）
 stopifnot("inferCNV 的細胞與 gbm4 對不上：確認讀的是同一份 04 物件" =
             setequal(colnames(cnv.all), colnames(gbm4)))
@@ -194,7 +239,7 @@ sessionInfo()
 # =====================================================================
 # ▶ 練習 5
 #  5-1 【錯誤示範】把 refs 改成 c("Astocyte")（注意 GEO 原檔就是少一個 r），重跑 inferCNV（可只跑 §1）。
-#      ★ 一定要同時把 out_dir 換成另一個資料夾，例如 "output/05_infercnv_badref"——
+#      ★ 一定要同時把 out_dir 換成另一個資料夾，例如 "output/rds/05_infercnv_badref"——
 #        沿用原資料夾的話 inferCNV 會直接載入舊結果，你會以為「換了參考組結果沒變」。熱圖變成什麼樣？
 #      chr7 / chr10 的訊號還在嗎？用一句話解釋為什麼。
 #  5-2 把 top 從 200 改成 50 與 500，cnv.cor 的分布變了多少？判定結果（malignant 數）差幾顆？
