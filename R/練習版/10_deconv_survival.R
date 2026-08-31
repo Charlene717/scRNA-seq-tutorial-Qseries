@@ -33,6 +33,12 @@ q <- GDCquery(project = "TCGA-GBM", data.category = "Transcriptome Profiling",
 GDC_DIR <- if (.Platform$OS.type == "windows") "C:/GDCdata" else "~/GDCdata"
 dir.create(GDC_DIR, showWarnings = FALSE, recursive = TRUE)
 GDCdownload(q, directory = GDC_DIR, files.per.chunk = 50)
+# GDCdownload 的 api 方法是「抓一包 tar → 在『當前工作目錄』解開 → 把資料檔搬進 directory」。
+# tar 裡附的 MANIFEST.txt 不在搬移名單內，會留在專案根目錄；而且它只保留最後一批的內容，
+# 當成下載紀錄看是不完整的。順手收進資料目錄，專案根目錄就不會多出一個沒人用的孤兒檔。
+if (file.exists("MANIFEST.txt")) {                       # 跨磁碟（專案在 E:、GDC_DIR 在 C:）不能用 file.rename
+  if (file.copy("MANIFEST.txt", file.path(GDC_DIR, "MANIFEST.txt"), overwrite = TRUE)) file.remove("MANIFEST.txt")
+}
 bulk <- GDCprepare(q, directory = GDC_DIR)                                   # 本例回來 391 個檔案，含臨床欄位
 bulk.mtx <- assay(bulk, "unstranded"); rownames(bulk.mtx) <- rowData(bulk)$gene_name
 bulk.mtx <- bulk.mtx[!duplicated(rownames(bulk.mtx)), ]
