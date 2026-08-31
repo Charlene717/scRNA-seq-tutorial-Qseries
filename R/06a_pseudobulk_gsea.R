@@ -118,7 +118,7 @@ if (FOCUS != "Malignant")
 foc.res <- de[[FOCUS]]$res
 head(foc.res, 15)
 
-# 對照組（雷本體）：cell-level Wilcoxon，看 p 值膨脹多少（只看惡性細胞）
+# 對照組（雷本體）：cell-level Wilcoxon，看 p 值膨脹多少（對象是 FOCUS 那一型，不一定是惡性細胞）
 foc <- subset(gbm4, cells = colnames(gbm4)[gbm4$type == FOCUS]); Idents(foc) <- "tissue"
 naive <- FindMarkers(foc, ident.1 = "Tumor", ident.2 = "Periphery", logfc.threshold = 0, min.pct = 0.1)
 cat(FOCUS, " cell-level padj < 0.05：", sum(naive$p_val_adj < 0.05),

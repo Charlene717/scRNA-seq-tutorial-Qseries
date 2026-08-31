@@ -61,7 +61,7 @@ for (s in samples) {                                                        # 8 
   # 用總數當門檻會誤殺：BT_S6_Tumor 全部只有 157 顆，但 Macro/MG 54、Malignant 90，兩群都夠。
   keep <- names(which(table(obj$cc_label) >= MIN.CELLS))
   if (length(keep) < 2) { cat("  ", s, "只有", length(keep), "群過得了門檻，跳過（通訊至少要兩群）\n"); next }
-  cat("  ", s, "重新計算：", ncol(obj), "顆細胞，可用的群 ", paste(keep, collapse = "、"), "\n", sep = "")
+  cat(sprintf("   %s 重新計算：%d 顆細胞，可用的群 %s\n", s, ncol(obj), paste(keep, collapse = "、")))
   res <- tryCatch(run_cc(obj),                                               # 一個樣本失敗不該讓整支腳本停下來
                   error = function(e) { message("  ", s, " 跑不完：", conditionMessage(e)); NULL })
   if (is.null(res)) next
@@ -159,45 +159,51 @@ alive <- vapply(cc.list, function(x) all(c(SRC, TGT) %in% cc_groups(x)), logical
 cat(sprintf("\n%s → %s：%s\n", SRC, TGT,
     paste(sprintf("%s＝%s", names(alive), ifelse(alive, "兩群都在", "有一群細胞數不足，已被移除")), collapse = "，")))
 
-bubble1 <- function(x, ttl)                                                 # 單一條件的 bubble；畫不出來就回 NULL
-  tryCatch(netVisual_bubble(x, sources.use = SRC, targets.use = TGT, remove.isolate = TRUE) + ggtitle(ttl),
-           error = function(e) { message("  ", ttl, " 畫不出來：", conditionMessage(e)); NULL })
-
-p <- NULL
-if (all(alive))
-  p <- tryCatch(netVisual_bubble(cc.m, sources.use = SRC, targets.use = TGT, comparison = c(1, 2), angle.x = 45),
-                error = function(e) {
-                  message("  兩群都在，但並排失敗（", conditionMessage(e), "）——改畫單樣本對照")
-                  NULL })
-if (is.null(p)) {
-  ps <- Filter(Negate(is.null), lapply(names(cc.list), function(k) bubble1(cc.list[[k]], k)))
-  if (length(ps)) {
-    p <- patchwork::wrap_plots(ps, nrow = 1)
-    if (length(ps) < length(cc.list))          # 只畫得出一邊時，圖上一定要寫清楚另一邊為什麼是空的——
-      p <- p + patchwork::plot_annotation(     # 不然這張圖被單獨貼進投影片，就會被讀成「另一邊沒有通訊」
-        subtitle = sprintf("只有 %d/%d 個條件畫得出來；缺的那一邊是細胞數不足（< %d）整群被移除，不是沒有訊號",
-                           length(ps), length(cc.list), MIN.CELLS))
+# 一組「來源 → 目標」的兩條件 bubble：先試合併物件；②那個 bug 一觸發就退回兩張單樣本並排；
+# 兩種都畫不出來，才把原因說清楚。共同細胞群那一組用的是同一個函式。
+bubble_pair <- function(src, tgt, file, ttl) {
+  ok <- vapply(cc.list, function(x) all(c(src, tgt) %in% cc_groups(x)), logical(1))
+  one <- function(x, k)
+    tryCatch(netVisual_bubble(x, sources.use = src, targets.use = tgt, remove.isolate = TRUE) + ggtitle(k),
+             error = function(e) { message("  ", ttl, "／", k, " 畫不出來：", conditionMessage(e)); NULL })
+  p <- NULL
+  if (all(ok))
+    p <- tryCatch(netVisual_bubble(cc.m, sources.use = src, targets.use = tgt, comparison = c(1, 2), angle.x = 45),
+                  error = function(e) {
+                    message("  ", ttl, "：合併物件的並排失敗（", conditionMessage(e), "）——改畫單樣本對照")
+                    NULL })
+  if (is.null(p)) {
+    ps <- Filter(Negate(is.null), lapply(names(cc.list), function(k) one(cc.list[[k]], k)))
+    if (length(ps)) {
+      p <- patchwork::wrap_plots(ps, nrow = 1)
+      if (length(ps) < length(cc.list))        # 只畫得出一邊時，圖上一定要寫清楚另一邊為什麼是空的——
+        p <- p + patchwork::plot_annotation(   # 不然這張圖被單獨貼進投影片，就會被讀成「另一邊沒有通訊」
+          subtitle = sprintf("只有 %d/%d 個條件畫得出來；缺的那一邊是細胞數不足（< %d）整群被移除，不是沒有訊號",
+                             length(ps), length(cc.list), MIN.CELLS))
+    }
   }
+  if (is.null(p)) {
+    cat(ttl, "：兩個條件都畫不出來。這一格本身就是結論，不是失敗：\n",
+        "  細胞數不足的群會被整組移除，圖上的空白代表「沒有東西可以比」，不代表「兩邊沒有差異」。\n",
+        "  下一步只有兩條路：降低 MIN.CELLS（代價是機率估計不穩），或換一組兩邊都夠大的來源→目標。\n", sep = "")
+    return(invisible(FALSE))
+  }
+  print(p); ggsave(file, p, width = 9, height = 6, bg = "white"); invisible(TRUE)
 }
-if (is.null(p)) {
-  cat("這組 bubble 兩個條件都畫不出來。這一格本身就是結論，不是失敗：\n",
-      "  細胞數不足的群會被整組移除，圖上的空白代表「沒有東西可以比」，不代表「兩邊沒有差異」。\n",
-      "  下一步只有兩條路：降低 MIN.CELLS（代價是機率估計不穩），或換一組兩邊都夠大的來源→目標。\n", sep = "")
-} else {
-  print(p); ggsave("output/figs/07_6_bubble_compare.pdf", p, width = 9, height = 6, bg = "white")
-}
+bubble_pair(SRC, TGT, "output/figs/07_6_bubble_compare.pdf", paste(SRC, "→", TGT))
 
 # 換一組兩個條件都活著的細胞群——這不是補救，是把「這份資料到底能比什麼」講清楚。
 # 只剩一群時畫的是自分泌（autocrine）：這份資料真正撐得起核心 vs 邊緣對比的，就只有 Macro/MG 對自己。
 both <- Reduce(intersect, lapply(cc.list, cc_groups))
 cat("兩個條件都存活的細胞群：", paste(both, collapse = "、"), "\n")
-if (length(both) >= 1) {
-  p.s <- tryCatch(netVisual_bubble(cc.m, sources.use = both, targets.use = both, comparison = c(1, 2), angle.x = 45),
-                  error = function(e) { message("  共同細胞群的並排 bubble 也畫不出來：", conditionMessage(e)); NULL })
-  if (!is.null(p.s)) { print(p.s); ggsave("output/figs/07_6_bubble_shared.pdf", p.s, width = 9, height = 7, bg = "white") }
-}
+if (length(both) >= 1)
+  bubble_pair(both, both, "output/figs/07_6_bubble_shared.pdf", "兩條件共同的細胞群")
 ## （這裡在解答版有一段參考答案；先自己跑出數字，再回去對照）
-# 四位病人一致性：對每位病人重複 §3，收集 rankNet 的顯著路徑，取交集
+# 四位病人一致性（練習 7-4）：先看哪幾位病人兩個部位都跑得出來
+pairs.ok <- Filter(function(x) all(paste0(x, c("_Tumor", "_Periphery")) %in% names(cc.all)),
+                   unique(gbm4$patient))
+cat("兩個部位都有 CellChat 結果的病人：", paste(pairs.ok, collapse = "、"), "\n")
+# 對每位病人重複 §3，收集 rankNet 的顯著路徑，取交集
 # rank.list <- lapply(patients, function(p) rankNet(mergeCellChat(list(cc.all[[paste0(p,"_Tumor")]], cc.all[[paste0(p,"_Periphery")]]), add.names = c("Core","Periphery")), mode = "comparison", do.stat = TRUE, return.data = TRUE)$signaling.contribution)
 
 ## ---- 4. liana-crosscheck --------------------------------------------- Q3 頁 65
@@ -229,7 +235,8 @@ sessionInfo()
 #  7-1 把 subsetDB 改成全部三類（不加 search），互動數變多少？新增的顯著路徑主要是哪一類？
 #  7-2 圖 4：這個樣本裡「既送又收」的樞紐是誰？換另一位病人，樞紐一樣嗎？
 #  7-3 SPP1 路徑的 netAnalysis_contribution 前兩對是什麼？用 VlnPlot 確認：配體在來源群的表現比例 > 25% 嗎？
-#  7-4 四位病人各做一次 rankNet 比較，哪些路徑四位方向一致？只有一位病人顯著的路徑有幾條？
+#  7-4 pairs.ok 列出的病人各做一次 rankNet 比較（這份資料是三位，BT_S6 的邊緣湊不出兩群）：
+#      哪些路徑三位方向一致？只有一位病人顯著的路徑有幾條？三位一致跟一位顯著，能寫的話一不一樣？
 #  7-5 LIANA 的共識前 10 對與 CellChat bubble 的前 10 對重疊幾對？不重疊的原因可能是什麼？
 #      再做一件事：把前 10 對的「配體」一個一個查 UniProt 的 subcellular location，
 #      有幾個真的是分泌型或單次穿膜的表面蛋白？細胞內的蛋白排進前十，代表什麼？
