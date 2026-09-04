@@ -1,7 +1,7 @@
 # =====================================================================
 # 07_cellchat.R — 練習腳本 7：細胞通訊（CellChat）——每個樣本各跑一次、六種圖、兩條件比較、LIANA 交叉驗證
 #
-# 對應影片：Q3 頁 54–65（§1 跑一次 CellChat、§2 路徑層級與六種圖、§3 兩條件比較、§4 LIANA）
+# 對應影片：Q3 頁 58–71（§1 跑一次 CellChat、§2 路徑層級與六種圖、§3 兩條件比較、§4 LIANA）
 # 輸入：output/rds/06_gbm4_final.rds（06a_pseudobulk_gsea.R；含 malignant 標籤與 type 欄）
 # 輸出：output/rds/07_cellchat/<patient>_<tissue>_min<MIN.CELLS>.rds、output/tables/07_liana_top500.csv、output/figs/07_*.pdf
 # 時間：每個樣本約 5–15 分鐘（8 個樣本，建議先跑一位病人）；跑過的樣本會存成 rds，
@@ -27,7 +27,7 @@ gbm4$cc_label <- ifelse(gbm4$malignant == "malignant", "Malignant",
 gbm4 <- subset(gbm4, malignant != "unresolved")
 table(gbm4$cc_label, paste(gbm4$patient, gbm4$tissue))                      # 每群 ≥ MIN.CELLS 顆才進得了網路
 
-## ---- 1. run-per-sample --------------------------------------------- Q3 頁 55–56
+## ---- 1. run-per-sample --------------------------------------------- Q3 頁 60–61
 run_cc <- function(obj, label = "cc_label") {
   obj$samples <- factor(paste(obj$patient, obj$tissue, sep = "_"))          # CellChat v2 要求 meta 有 samples 欄
   cc <- createCellChat(object = obj, group.by = label, assay = "RNA")       # 用 data 層（log-normalized）
@@ -81,7 +81,7 @@ cc <- cc.all[[DEMO]]                                                        # �
 DEMO.p <- sub("_[^_]*$", "", DEMO); DEMO.t <- sub(".*_", "", DEMO)
 cat("\n六種圖的示範樣本：", DEMO, "\n")
 
-## ---- 2. six-plots --------------------------------------------------- Q3 頁 57–62
+## ---- 2. six-plots --------------------------------------------------- Q3 頁 62–67
 groupSize <- as.numeric(table(cc@idents))
 pdf("output/figs/07_1_circle.pdf", width = 10, height = 5); par(mfrow = c(1, 2), xpd = TRUE)
 netVisual_circle(cc@net$count,  vertex.weight = groupSize, weight.scale = TRUE, label.edge = FALSE, title.name = "Number of interactions")
@@ -124,7 +124,7 @@ feats <- intersect(c("SPP1", "CD44"), rownames(gbm4))
 if (length(feats)) VlnPlot(subset(gbm4, patient == DEMO.p & tissue == DEMO.t),
                            features = feats, group.by = "cc_label", pt.size = 0)
 
-## ---- 3. compare-conditions ------------------------------------------ Q3 頁 63–64
+## ---- 3. compare-conditions ------------------------------------------ Q3 頁 68–70
 PAIR <- "BT_S2"                                                             # 同一位病人的核心 vs 邊緣
 need <- paste0(PAIR, c("_Tumor", "_Periphery"))
 if (!all(need %in% names(cc.all)))
@@ -215,7 +215,7 @@ cat("兩個部位都有 CellChat 結果的病人：", paste(pairs.ok, collapse =
 # 對每位病人重複 §3，收集 rankNet 的顯著路徑，取交集
 # rank.list <- lapply(patients, function(p) rankNet(mergeCellChat(list(cc.all[[paste0(p,"_Tumor")]], cc.all[[paste0(p,"_Periphery")]]), add.names = c("Core","Periphery")), mode = "comparison", do.stat = TRUE, return.data = TRUE)$signaling.contribution)
 
-## ---- 4. liana-crosscheck --------------------------------------------- Q3 頁 65
+## ---- 4. liana-crosscheck --------------------------------------------- Q3 頁 71
 if (requireNamespace("liana", quietly = TRUE)) {
   library(liana)
   obj <- subset(gbm4, patient == DEMO.p & tissue == DEMO.t); Idents(obj) <- "cc_label"
