@@ -1,7 +1,7 @@
 # =====================================================================
 # 06b_cell_level_de.R — 練習腳本 6b：不能 pseudobulk 時的差異表達（cell-level DE 的正確姿勢）
 #
-# 對應影片：Q3 頁 48–49（三道防線：病人共變量、逐病人一致性、標籤置換）
+# 對應影片：Q3 頁 53–54（三道防線：病人共變量、逐病人一致性、標籤置換）
 # 什麼時候用這支：pseudobulk 需要「每個條件 ≥ 2–3 個生物重複」。當病人太少（06a 的 de.summary
 #   顯示某型別不到 MIN_PAIRS）、或整份資料只有一位病人時，退而在細胞層級做——但要知道
 #   p 值是被灌大的（假重複），所以這支的重點不是 p 值，而是三道防線 + 「假說產生」的定位。
@@ -18,7 +18,7 @@ if (!"data" %in% Layers(gbm4[["RNA"]])) gbm4 <- NormalizeData(gbm4)
 gbm4$tissue <- factor(gbm4$tissue, levels = c("Periphery", "Tumor"))
 gbm4$type <- ifelse(gbm4$malignant == "malignant", "Malignant", gbm4$celltype_author)
 
-## ---- 1. when-you-land-here ------------------------------------------ Q3 頁 48
+## ---- 1. when-you-land-here ------------------------------------------ Q3 頁 53
 # 先誠實面對：這型別的樣本結構長什麼樣？
 TYPE <- "OPC"                                        # 06a 的 de.summary 裡被跳過的那型
 obj  <- subset(gbm4, cells = colnames(gbm4)[gbm4$type == TYPE])
@@ -26,7 +26,7 @@ print(table(obj$patient, obj$tissue))
 # 讀法：兩部位都 ≥ 20 顆的病人只有 BT_S2——配對 pseudobulk 不成立。
 # 從這裡開始，所有結果的定位都是「假說產生」，不是可發表的差異基因表。
 
-## ---- 2. cell-level-de-with-covariate -------------------------------- Q3 頁 48–49
+## ---- 2. cell-level-de-with-covariate -------------------------------- Q3 頁 53–54
 Idents(obj) <- "tissue"
 # (a) 先跑 Seurat 預設：Wilcoxon（大多數教學和論文的起手式）——當基準
 de.wilcox <- FindMarkers(obj, ident.1 = "Tumor", ident.2 = "Periphery",
@@ -49,7 +49,7 @@ only.wilcox <- setdiff(head(de.wilcox$gene, 30), head(de$gene, 30))
 cat("只在 Wilcoxon 前 30 名的基因（很可能是病人效應）：", paste(head(only.wilcox, 10), collapse = ", "), "\n")
 # p 值仍然偏小（細胞不是獨立觀察值），MAST 的排序只是「比較可信」，不是可信。
 
-## ---- 3. per-patient-consistency ------------------------------------- Q3 頁 49
+## ---- 3. per-patient-consistency ------------------------------------- Q3 頁 54
 # 防線二：逐病人算 logFC，方向一致的才留。這是 cell-level DE 最重要的一張表。
 per.pat <- function(g) {
   sapply(unique(obj$patient), function(p) {
@@ -76,7 +76,7 @@ cat(sprintf("通過一致性防線的基因：%d / %d（n_evaluable < 2 一律�
             sum(de$consistent), nrow(de)))
 # 只有一位病人可評估時（n_evaluable = 1），「一致性」無從談起——這正是要誠實寫進報告的限制。
 
-## ---- 4. permutation-check ------------------------------------------- Q3 頁 49
+## ---- 4. permutation-check ------------------------------------------- Q3 頁 54
 # 防線三：標籤置換。把 tissue 標籤在「病人內」隨機打散重跑，看能撈到幾個「顯著」基因。
 # 真實訊號應該遠多於置換後的數目；差不多多，就代表你看到的多半是假重複灌出來的。
 n.perm <- 20                                          # 教學用 20 次；正式分析 ≥ 100
@@ -128,7 +128,7 @@ ggsave("output/figs/06b_permutation.png", p, width = 6, height = 4, dpi = 150, b
 #   什麼時候置換才有意義：每位病人在兩個部位都有相當數量的細胞——那才有東西可以打散。
 ## <<< 參考答案
 
-## ---- 5. deliver-with-caveats ---------------------------------------- Q3 頁 49
+## ---- 5. deliver-with-caveats ---------------------------------------- Q3 頁 54
 # 交付：表上明寫方法與限制。這份表的用途是「挑基因去驗證」，不是結論。
 de$method <- "cell-level MAST, patient as latent var; hypothesis-generating (insufficient replicates for pseudobulk)"
 write.csv(de, sprintf("output/tables/06b_de_%s_cell_level.csv", gsub("[^A-Za-z0-9]+", "_", TYPE)), row.names = FALSE)

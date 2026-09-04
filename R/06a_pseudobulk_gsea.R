@@ -1,7 +1,7 @@
 # =====================================================================
 # 06a_pseudobulk_gsea.R — 練習腳本 6a：組成分析、pseudobulk + 配對 DESeq2、每樣本點圖、GSEA
 #
-# 對應影片：Q3 頁 29–47（§1 組成與 propeller、§2 每型別 pseudobulk + DESeq2、§3 每樣本點圖與火山圖、§4 GSEA / ORA、§5 交付）
+# 對應影片：Q3 頁 29–51（§1 組成與 propeller、§2 每型別 pseudobulk + DESeq2、§3 每樣本點圖與火山圖、§4 GSEA / ORA、§5 交付）
 # 輸入：output/rds/05_gbm4_malignant.rds（05_infercnv.R）；若尚未跑 05（例如 JAGS 還沒裝），
 #       §0 會退而用 output/rds/04_gbm4_unintegrated.rds + 作者的 Neoplastic 標籤當替代惡性標籤
 # 輸出：output/rds/06_gbm4_final.rds；output/tables/06_de_<型別>.csv、06_de_summary_by_type.csv、
@@ -51,7 +51,7 @@ fit <- eBayes(contrasts.fit(fit, makeContrasts(tissueTumor - tissuePeriphery, le
 topTable(fit, n = Inf)                                # 每種型別：核心 vs 邊緣的比例差異（配對）
 # 解讀：Malignant 在核心較高、Oligodendrocyte 在邊緣較高——但記得封閉性：一種變少其他必變多。
 
-## ---- 2. pseudobulk-de（每種細胞型別各自比）-------------------------- Q3 頁 33–36
+## ---- 2. pseudobulk-de（每種細胞型別各自比）-------------------------- Q3 頁 33–37
 # 為什麼要「每種型別各自比」：核心 vs 邊緣的差異在惡性細胞、巨噬細胞、寡樹突裡各不相同。
 # 把所有細胞混在一起比，得到的是「組成差異」（邊緣的正常腦細胞多），不是任何一種細胞的變化。
 library(DESeq2)
@@ -126,7 +126,7 @@ cat(FOCUS, " cell-level padj < 0.05：", sum(naive$p_val_adj < 0.05),
 # 注意：如果 pseudobulk 反而比 cell-level 多，通常是某些「病人 × 部位」細胞太少、pseudobulk 樣本是噪音
 # —— 這就是 MIN_CELLS 存在的理由；也可以把它調高到 30–50 再看一次。
 
-## ---- 3. per-sample-plot + 火山圖 ----------------------------------- Q3 頁 37–38
+## ---- 3. per-sample-plot + 火山圖 ----------------------------------- Q3 頁 39–40
 plot.gene <- function(d, g) {
   cpm <- log2(t(t(d$pb) / colSums(d$pb)) * 1e6 + 1)
   df <- data.frame(expr = cpm[g, ], d$coldata)
@@ -160,11 +160,11 @@ ggsave("output/figs/06_volcano_all_types.png", wrap_plots(vol, ncol = 2),
 for (ty in names(de))
   ggsave(sprintf("output/figs/06_volcano_%s.png", gsub("[^A-Za-z0-9]+", "_", ty)), vol[[ty]],
          width = 8, height = 7, dpi = 150, bg = "white")
-# 讀火山圖（Q3 頁 38）：右上 = 核心較高且顯著、左上 = 邊緣較高且顯著；中間高高的一根 = 效應小但 p 小，
+# 讀火山圖（Q3 頁 40）：右上 = 核心較高且顯著、左上 = 邊緣較高且顯著；中間高高的一根 = 效應小但 p 小，
 # 通常是表現量高的基因（baseMean 大），要回頭看每樣本點圖確認四位病人方向是否一致。
 # 形狀異常的訊號：所有點擠成一條直柱（LFC 被過度收縮）、或只有正的一側（某個部位樣本幾乎沒有細胞）。
 
-## ---- 4. enrichment：GSEA（Hallmark / GO / KEGG）+ ORA（GO / KEGG）--- Q3 頁 39–45
+## ---- 4. enrichment：GSEA（Hallmark / GO / KEGG）+ ORA（GO / KEGG）--- Q3 頁 41–50
 # 兩種方法回答不同問題：
 #   GSEA：「整個排序清單裡，這個基因集是不是偏向一端？」不切閾值，全部基因都參與 —— 小 n 的首選
 #   ORA ：「顯著基因裡，這個基因集的比例是不是高於背景？」要先切閾值，背景必須是「被檢定的基因」
@@ -320,7 +320,7 @@ write.csv(ora.tab, "output/tables/06_ora_go_all_types.csv", row.names = FALSE)
 #   同樣會有缺氧反應——方向合理才往下讀 leading edge；方向反了，先回去檢查 tissue 的 levels 順序。
 sessionInfo()
 
-## ---- 5. deliverables ----------------------------------------------- Q3 頁 46
+## ---- 5. deliverables ----------------------------------------------- Q3 頁 51
 # 交出去的東西：每種型別一份 DE 表（含 raw 與 shrunken LFC、baseMean、padj）、一張火山圖、
 # GSEA 總表（含 leading edge）、ORA 總表；全部由本腳本重生，output/ 裡沒有手工檔。
 write.csv(de.summary, "output/tables/06_de_summary_by_type.csv", row.names = FALSE)
@@ -352,5 +352,5 @@ saveRDS(gbm4, "output/rds/06_gbm4_final.rds")
 #      這跟 §2 開頭那句「把所有細胞混在一起比，得到的是組成差異」有什麼關係？
 #      想一想：要怎麼改才能真的比到「同一種免疫細胞在核心與邊緣的差異」？（提示：03 §4b 做過什麼）
 #  進階 用 CellChat（或 liana）比較核心 vs 邊緣的惡性細胞與免疫細胞之間的配體受體軸；
-#      在動手前先寫下：這份資料符合「細胞通訊」那條路的資料前提嗎？（Q3 頁 54）
+#      在動手前先寫下：這份資料符合「細胞通訊」那條路的資料前提嗎？（Q3 頁 59）
 # =====================================================================
