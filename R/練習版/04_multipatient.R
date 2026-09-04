@@ -93,10 +93,10 @@ gbm4 <- RunUMAP(gbm4, dims = 1:____, reduction.name = "umap.raw")
 p <- DimPlot(gbm4, reduction = "umap.raw", group.by = "patient") +
      DimPlot(gbm4, reduction = "umap.raw", group.by = "celltype_author", label = TRUE, repel = TRUE)
 ggsave("output/figs/04_umap_unintegrated.png", p, width = 13, height = 5.5, dpi = 150, bg = "white")
-# 看圖：Neoplastic 是否按病人分島？Immune / Oligodendrocyte 是否跨病人混合？
+# 看圖：Neoplastic 是否按病人分成不同群集？Immune / Oligodendrocyte 是否跨病人混合？
 saveRDS(gbm4, "output/rds/04_gbm4_unintegrated.rds")
 
-# 量化「按病人分島」：每群裡病人的熵（越低越單一病人）
+# 量化「按病人分成不同群集」：每群裡病人的熵（越低越單一病人）
 patient.entropy <- gbm4@meta.data |> dplyr::count(raw_clusters, patient) |>
   group_by(raw_clusters) |> mutate(p = n / sum(n)) |>
   summarise(entropy = -sum(p * log(p)), n = sum(n), .groups = "drop")

@@ -59,38 +59,61 @@ obj <- CreateInfercnvObject(raw_counts_matrix = cts,
 # ⚠ inferCNV 會把每個步驟的中間結果存進 out_dir，下次跑同一個 out_dir 時「直接從最後一步接續」，
 #   log 會出現 "Checking for saved results / Using backup from step 22"。中途失敗要續跑時很方便，
 #   但只要你改了 cutoff、refs、denoise 這類參數，它「不會」重算——會安靜地把舊結果再給你一次。
-#   下面這道檢查專門擋這件事：拿輸入的 RDS 跟快取裡「最早」的步驟檔比時間。
-#   要比最早的那個：run.final 每跑一次都會重寫，看它會被騙過去。
+#   下面這道檢查專門擋這件事。
+#   比的是「輸入內容 + 參數」的指紋，不是檔案時間：把 04 重跑一次，RDS 的時間就變新了，
+#   內容卻一模一樣；用時間比會在這種情況誤判，逼你白白重跑半小時。指紋只有真的換了東西才會不同。
 out.dir <- "output/rds/05_infercnv"       # inferCNV 的原生輸出整包放在 rds/ 底下，跟其他分析物件同一層
-in.rds  <- "output/rds/04_gbm4_unintegrated.rds"
-# STALE.OK 是「臨時通行證」，不是設定：只在你確定輸入內容其實沒變（例如上游只改了註解、
-# 只多存了幾個 csv）時暫時改成 TRUE，跑完請立刻改回 FALSE。
-# 一直放著 TRUE 等於這道檢查不存在——那正是它要防的事。
-STALE.OK <- FALSE
-steps <- list.files(out.dir, pattern = "^[0-9]{2}_.*\\.infercnv_obj$", full.names = TRUE)
-stamp <- file.path(out.dir, "_run_stamp.rds")            # 下面 §1b 寫的：這份快取是用哪個時間點的輸入算的
-# 有步驟檔就看最早那個的時間戳；步驟檔被清掉時（見 §1b）改看 stamp。兩條路都在回答同一個問題：
-# 「現在磁碟上的快取，是不是用比目前這份輸入更舊的東西算出來的？」
-stale <- {                                               # 大括號不能省：頂層的 if/else 拆行會被當成兩句
-  if (length(steps))           min(file.mtime(steps)) < file.mtime(in.rds)
-  else if (file.exists(stamp)) readRDS(stamp)$in_mtime < file.mtime(in.rds)
-  else                         FALSE                     # 全新的 out_dir，沒有快取可過期
+
+# 參數先寫成變數，run() 再引用同一組——指紋跟真正跑的參數綁在一起，改了一定會被抓到。
+# 寫成兩份（一份給 run()、一份給指紋）遲早會不同步，那時檢查就形同虛設。
+## TODO ▶ Smart-seq2 與 10x 的 cutoff 差 10 倍，這份資料該用哪個？（Q3 頁 22）
+CUTOFF        <- ____
+CLUSTER.GROUP <- TRUE     # 每位病人各自聚類
+DENOISE       <- TRUE
+USE.HMM       <- FALSE    # 亞株分析時再開（慢很多）
+sig <- function(v) {                                     # 內容指紋：有 digest 就用它，沒有退成便宜的摘要
+  v <- as.character(v)
+  if (requireNamespace("digest", quietly = TRUE)) digest::digest(v)
+  else paste(length(v), sum(nchar(v)), v[1], v[length(v)], sep = "|")
 }
-if (stale && !STALE.OK) {
-  stop("inferCNV 快取比輸入舊：", out.dir, " 裡的結果是用更早版本的 ", basename(in.rds), " 算出來的。\n",
-       "  真的換了輸入或參數 → 刪掉整個 ", out.dir, "（或換一個 out_dir）再跑。\n",
-       "  確定輸入內容沒變 → 把 STALE.OK 暫時設成 TRUE 跳過這道檢查，跑完改回 FALSE。", call. = FALSE)
+run.key <- list(dim     = dim(cts), total = sum(cts),
+                cells   = sig(colnames(cts)), genes = sig(rownames(cts)),
+                groups  = sig(ann$group),     refs  = sort(refs),
+                genepos = sig(readLines(gpos, warn = FALSE)),
+                params  = list(cutoff = CUTOFF, cluster_by_groups = CLUSTER.GROUP,
+                               denoise = DENOISE, HMM = USE.HMM))
+stamp    <- file.path(out.dir, "_run_stamp.rds")         # §1b 跑完後寫：這份快取是用哪一組指紋算出來的
+cached   <- list.files(out.dir, pattern = "\\.infercnv_obj$")
+prev.key <- if (file.exists(stamp)) readRDS(stamp)$key else NULL
+
+if (length(cached) && is.null(prev.key)) {
+  # 舊版腳本留下的快取沒有指紋。不要用猜的：01_incoming_data 裡就存著當初送進去的矩陣，直接比對。
+  inc  <- file.path(out.dir, "01_incoming_data.infercnv_obj")
+  old  <- if (file.exists(inc)) try(readRDS(inc)@count.data, silent = TRUE) else NULL
+  same <- !is.null(old) && !inherits(old, "try-error") &&
+          identical(colnames(old), colnames(cts)) && all(rownames(old) %in% rownames(cts)) &&
+          isTRUE(all.equal(sum(old), sum(cts[rownames(old), ])))
+  if (!same)
+    stop("out_dir 裡有舊版腳本留下的快取，而且它的輸入跟現在這一份對不上。\n",
+         "  要重算：unlink(\"", out.dir, "\", recursive = TRUE) 或換一個 out_dir，再跑一次。",
+         call. = FALSE)
+  message("舊快取的輸入與現在這一份一致，沿用並補寫指紋。\n",
+          "  注意：舊快取沒有留下當初的 cutoff / refs / denoise，這三項無法回頭確認；\n",
+          "  若你在那次之後改過它們，請刪掉 out_dir 重跑。")
+} else if (length(cached) && !identical(prev.key, run.key)) {
+  chg <- names(run.key)[!vapply(names(run.key),
+                                function(k) identical(prev.key[[k]], run.key[[k]]), logical(1))]
+  stop("inferCNV 快取跟現在的設定對不上，變動的是：", paste(chg, collapse = "、"), "。\n",
+       "  inferCNV 不會因為參數變了就重算，所以先在這裡停下來。\n",
+       "  要重算：unlink(\"", out.dir, "\", recursive = TRUE) 或換一個 out_dir，再跑一次。",
+       call. = FALSE)
 }
-if (STALE.OK) warning("STALE.OK = TRUE：這一輪跳過了 inferCNV 快取過期檢查。\n",
-                      "  跑完記得把它改回 FALSE，否則下次真的換了參數，你會拿到舊結果而不自知。",
-                      call. = FALSE, immediate. = TRUE)
 obj <- infercnv::run(obj,
-                     ## TODO ▶ Smart-seq2 與 10x 的 cutoff 差 10 倍，這份資料該用哪個？（Q3 頁 22）
-                     cutoff = ____,
+                     cutoff = CUTOFF,                  # 與上面指紋用的是同一組參數
                      out_dir = out.dir,
-                     cluster_by_groups = TRUE,         # 每位病人各自聚類
-                     denoise = TRUE,
-                     HMM = FALSE,                      # 亞株分析時再開（慢很多）
+                     cluster_by_groups = CLUSTER.GROUP,
+                     denoise = DENOISE,
+                     HMM = USE.HMM,
                      num_threads = 4)
 # 輸出的 infercnv.png 就是熱圖：上半參考（平）、下半四位病人；看 chr7 gain / chr10 loss。
 # 熱圖是 inferCNV 自己寫在 out_dir 裡的，檔名沒有腳本編號。複製一份到 figs/ 並補上 05_ 前綴，
@@ -115,13 +138,13 @@ for (f in c("infercnv.png", "infercnv.preliminary.png", "infercnv_subclusters.pn
 #
 # 清掉的代價，要看清楚：
 #   ① 之後任何一次中斷都要從第一步重跑（本例約 10–30 分鐘）。
-#   ② 上面那道「快取比輸入舊」的檢查原本靠步驟檔的時間戳。清掉之後改看
-#      下面寫的 _run_stamp.rds（幾百 bytes），檢查一樣有效——不是把安全網拿掉。
+#   ② 上面那道「快取跟設定對不上」的檢查靠的是下面寫的 _run_stamp.rds（幾百 bytes），
+#      不是步驟檔本身。中間檔清掉，檢查一樣有效——不是把安全網拿掉。
 #   ③ run.final 一定會保留，§2 之後完全不受影響；熱圖也已經複製到 figs/ 了。
 #
 # 建議：還在調參數、或機器容易中斷 → 保持 FALSE。教學跑完、確定不再改參數 → 改 TRUE 收回 2.9 GB。
 CLEAN.INTERMEDIATE <- FALSE
-saveRDS(list(in_mtime = file.mtime(in.rds), when = Sys.time()), stamp)   # 先寫 stamp，再清才安全
+saveRDS(list(key = run.key, when = Sys.time()), stamp)   # 先寫指紋，再清才安全
 if (CLEAN.INTERMEDIATE) {
   junk <- setdiff(list.files(out.dir, pattern = "\\.infercnv_obj$", full.names = TRUE),
                   file.path(out.dir, "run.final.infercnv_obj"))
@@ -190,7 +213,7 @@ gbm4$malignant <- with(gbm4@meta.data, ifelse(
 lineage.normal <- c("Immune cell", "Vascular", "Oligodendrocyte", "Neuron")
 gbm4$malignant[gbm4$malignant == "malignant" & gbm4$celltype_author %in% lineage.normal] <- "unresolved"
 
-# 第二項證據：按病人成島。惡性細胞應集中在 raw_clusters 中「單一病人為主」的群
+# 第二項證據：按病人各成一個群集。惡性細胞應集中在 raw_clusters 中「單一病人為主」的群
 tab <- table(gbm4$malignant, gbm4$celltype_author)
 print(tab)
 # 與作者標籤比對。整體一致率會被大量的「正常細胞判對」灌高，所以三個數字要一起看：
