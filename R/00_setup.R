@@ -23,7 +23,7 @@ bioc <- c("scDblFinder", "SingleR", "celldex", "GEOquery", "DESeq2", "apeglm", "
           "clusterProfiler", "org.Hs.eg.db", "enrichplot",   # 06 的 ORA（GO / KEGG）與富集圖
           "MAST")                                            # 06b 的 cell-level DE（病人當共變量）
 for (p in bioc) if (!requireNamespace(p, quietly = TRUE)) BiocManager::install(p, update = FALSE, ask = FALSE)
-# GitHub 上的套件：DoubletFinder（01 §4）、lisi（04 §5）、CellChat（07）、liana（07 §4）、MuSiC（08 §3）
+# GitHub 上的套件：DoubletFinder（01 §4）、lisi（04 §5）、CellChat（07）、liana（07 §4）、MuSiC（10 §1）
 # 常見錯誤：「HTTP error 401 Bad credentials」= 環境變數 GITHUB_PAT 裡有一個過期／無效的 token。
 # 下面的 helper 會先用匿名下載（不需要 token）；匿名有每小時 60 次的限制，超過再設定有效的 PAT。
 install_gh <- function(repo, pkg = basename(repo)) {

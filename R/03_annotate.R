@@ -1,7 +1,7 @@
 # =====================================================================
 # 03_annotate.R — 練習腳本 3：譜系標誌基因、marker、SingleR、命名、惡性狀態分數
 #
-# 對應影片：Q2 頁 38–59（§1 譜系標誌與 marker 面板、§2 FindAllMarkers 與篩選、§3 SingleR、§4 命名、§4b 免疫亞群、§5 Neftel 分數與三種算法、§5b 品質檢查、§6 交付與存檔）
+# 對應影片：Q2 頁 38–64（§1 譜系標誌與 marker 面板、§2 FindAllMarkers 與篩選、§3 SingleR、§4 命名、§4b 免疫亞群、§5 Neftel 分數與三種算法、§5b 品質檢查、§6 交付與存檔）
 # 輸入：output/rds/02_gbm_clustered.rds（02_cluster.R）
 # 輸出：output/rds/03_gbm_annotated.rds、output/tables/03_markers.csv（另有 03_immune_markers、03_composition）
 # 時間：約 5–10 分鐘（SingleR 首次下載參考集約 1 GB，之後有快取）
@@ -19,7 +19,7 @@ if (!is.null(gbm$RNA_snn_res.0.5) &&
        "  所有 FindClusters()（含 seed42 / k30 穩定性檢查）之後才寫回的。", call. = FALSE)
 cat("分群數：", nlevels(Idents(gbm)), "群\n")
 
-## ---- 1. gates-and-panel -------------------------------------------- Q2 頁 38–40
+## ---- 1. gates-and-panel -------------------------------------------- Q2 頁 43–45
 # 四個譜系標誌基因：先劃四個主要類群
 gates <- c("PTPRC",   # 免疫
            "SOX2",    # 膠質／惡性（正常星狀、OPC 也會亮）
@@ -46,14 +46,14 @@ p <- DotPlot(gbm, features = panel, cluster.idents = TRUE) + RotatedAxis() +
 ggsave("output/figs/03_dotplot_panel.png", p, width = 16, height = 6, dpi = 150, bg = "white")
 # 看圖：沿對角線一塊塊亮起來嗎？PTPRC 亮在幾群（那是免疫類群）？MKI67 疊在哪幾群上？
 
-## ---- 2. markers ---------------------------------------------------- Q2 頁 41–42
+## ---- 2. markers ---------------------------------------------------- Q2 頁 46–47
 markers <- FindAllMarkers(gbm, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.5)
 top5 <- markers |> group_by(cluster) |> slice_max(avg_log2FC, n = 5) |>
         select(cluster, gene, avg_log2FC, pct.1, pct.2, p_val_adj)
 print(top5, n = 60)                                   # 看表順序：log2FC → pct.1/pct.2 → p
 write.csv(markers, "output/tables/03_markers.csv", row.names = FALSE)
 
-## ---- 3. singler ---------------------------------------------------- Q2 頁 43–46
+## ---- 3. singler ---------------------------------------------------- Q2 頁 48–51
 library(SingleR); library(celldex)
 ref  <- celldex::HumanPrimaryCellAtlasData()          # 首次下載約 1 GB，之後快取
 pred <- SingleR(test = GetAssayData(gbm, layer = "data"), ref = ref,
@@ -68,11 +68,11 @@ gbm$singler <- unname(setNames(pred$labels, rownames(pred))[as.character(gbm$seu
 # 惡性與否需要基因體層級的證據（CNV 推斷、突變基因型）加上跨病人專屬性；單一病人的資料湊不齊，
 # 所以本腳本的膠質群一律停在 (undetermined)，這是這份資料能給的最後結論。
 
-## ---- 4. name -------------------------------------------------------- Q2 頁 47
+## ---- 4. name -------------------------------------------------------- Q2 頁 52
 # ★ 依照「你自己的」DotPlot 與 SingleR 結果填寫；下面只是範例對應，每份資料的編號都不同 ★
 # 範例對應（seed = 1234、Seurat 5.3、npc = 25、res 0.5、k = 20 跑 GBM 5k 得到的 13 群）
 # ※ 這是「範例」，不是答案：務必先看你自己的 03_dotplot_panel.png 與上面的 xval 表再定案。
-new.ids <- c("0"  = "Glial (undetermined)",           # C1QL1 / NPSR1：膠質／惡性（NPC 樣）
+new.ids <- c("0"  = "Glial (undetermined)",           # C1QL4 / NPSR1：膠質／惡性（NPC 樣）
              "1"  = "Oligodendrocyte",                # MAG / KLK6 / HAPLN2（SingleR 給 Astrocyte 是參考集沒有寡樹突）
              "2"  = "Glial (undetermined)",           # SAA1 / CP / CLU：星狀樣（AC 樣）——惡性與否待多重證據判定
              "3"  = "Glial (undetermined)",           # TRIB3 / IGFBP3 / VGF：壓力／缺氧樣惡性狀態
@@ -111,7 +111,7 @@ p <- DimPlot(gbm, label = TRUE, repel = TRUE) + NoLegend()
 ggsave("output/figs/03_umap_annotated.png", p, width = 7, height = 6, dpi = 150, bg = "white")
 table(gbm$celltype)
 
-## ---- 4b. immune-subsets --------------------------------------------- Q2 頁 48–50
+## ---- 4b. immune-subsets --------------------------------------------- Q2 頁 53–55
 # 層級式註釋：免疫類群單獨拿出來，整條流程重跑（subset 之後一定重算 HVG 與 PCA）
 imm <- subset(gbm, celltype %in% c("Macrophage", "Microglia", "T cell"))
 imm <- NormalizeData(imm) |> FindVariableFeatures(nfeatures = 2000) |> ScaleData() |> RunPCA(npcs = 30)
@@ -135,7 +135,7 @@ write.csv(imm.markers, "output/tables/03_immune_markers.csv", row.names = FALSE)
 #              "4" = "CD4 T", "5" = "Treg", "6" = "NK", "7" = "DC", "8" = "Cycling TAM")
 # imm$celltype_l2 <- imm.ids[as.character(Idents(imm))]
 # gbm$celltype_l2 <- gbm$celltype; gbm$celltype_l2[colnames(imm)] <- imm$celltype_l2   # 寫回全體
-# 命名規範（Q2 頁 57）：celltype_l1（主要類群）/ celltype_l2（型別）/ celltype_l3（狀態）/ celltype_conf
+# 命名規範（Q2 頁 61）：celltype_l1（主要類群）/ celltype_l2（型別）/ celltype_l3（狀態）/ celltype_conf
 # 注意：這裡「不」直接寫 Malignant。marker 只能定譜系：膠質瘤惡性細胞的正常對應細胞（星狀、OPC）
 #       就在同一塊組織裡，表現量高度重疊，所以沒有任何一組 marker 能區分惡性與正常膠質。
 #       在證據到位前就叫 Malignant，就是錯誤二（用型別標籤預設了結論）。
@@ -147,7 +147,7 @@ gbm$celltype_l1 <- dplyr::case_when(
   TRUE                                                      ~ "Other")
 table(gbm$celltype_l1)
 
-## ---- 5. malignant-states ------------------------------------------- Q2 頁 51–53
+## ---- 5. malignant-states ------------------------------------------- Q2 頁 56–58
 # Neftel et al. 2019 (Cell) 四種狀態的 meta-module。★ 完整基因集請用論文 Table S2（每組 50 個）；
 # 這裡列出每組前 12 個作示範，練習 3-3 請你補完整。
 # 注意方向性：這四種狀態是 Neftel 在「已經確認是惡性」的細胞裡定義出來的。分數只說明這群細胞
@@ -185,13 +185,13 @@ table(glial$state, glial$Phase)                       # 週期一起看：增殖
 ## <<< 參考答案
 st <- setNames(rep(NA_character_, ncol(gbm)), colnames(gbm)); st[colnames(glial)] <- glial$state; gbm$state <- unname(st)
 
-# 三種打分數算法（Q2 頁 53）：AddModuleScore（上）、UCell、AUCell
+# 三種打分數算法（Q2 頁 58）：AddModuleScore（上）、UCell、AUCell
 if (requireNamespace("UCell", quietly = TRUE)) {
   glial <- UCell::AddModuleScore_UCell(glial, features = neftel, name = "_UCell")
   print(cor(glial$MES1, glial$MES1_UCell))               # 三種算法排序通常高度一致
 }
 
-## ---- 5b. annotation-qc ---------------------------------------------- Q2 頁 54–56
+## ---- 5b. annotation-qc ---------------------------------------------- Q2 頁 59–60
 round(prop.table(table(gbm$celltype, gbm$singler), 1), 2)          # 交叉表（需先把 SingleR 群標籤寫回 gbm$singler）
 top5 <- markers |> group_by(cluster) |> slice_max(avg_log2FC, n = 5)
 gbm <- ScaleData(gbm, features = unique(c(VariableFeatures(gbm), top5$gene)))   # 熱圖用的基因要先 scale 過
@@ -207,7 +207,7 @@ sil <- cluster::silhouette(as.integer(Idents(gbm)[cells.sil]),
                            dist(Embeddings(gbm, "pca")[cells.sil, 1:20]))
 tapply(sil[, "sil_width"], Idents(gbm)[cells.sil], mean)            # < 0.1 的群存疑
 
-## ---- 6. deliverables-and-save --------------------------------------- Q2 頁 58–59
+## ---- 6. deliverables-and-save --------------------------------------- Q2 頁 63–64
 library(patchwork)
 p1 <- DimPlot(gbm, group.by = "celltype", label = TRUE, repel = TRUE) + NoLegend()
 p2 <- DotPlot(gbm, features = panel, group.by = "celltype") + RotatedAxis()
