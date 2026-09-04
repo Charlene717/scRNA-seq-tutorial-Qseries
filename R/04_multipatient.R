@@ -84,10 +84,10 @@ gbm4 <- RunUMAP(gbm4, dims = 1:25, reduction.name = "umap.raw")
 p <- DimPlot(gbm4, reduction = "umap.raw", group.by = "patient") +
      DimPlot(gbm4, reduction = "umap.raw", group.by = "celltype_author", label = TRUE, repel = TRUE)
 ggsave("output/figs/04_umap_unintegrated.png", p, width = 13, height = 5.5, dpi = 150, bg = "white")
-# 看圖：Neoplastic 是否按病人分島？Immune / Oligodendrocyte 是否跨病人混合？
+# 看圖：Neoplastic 是否按病人分成不同群集？Immune / Oligodendrocyte 是否跨病人混合？
 saveRDS(gbm4, "output/rds/04_gbm4_unintegrated.rds")
 
-# 量化「按病人分島」：每群裡病人的熵（越低越單一病人）
+# 量化「按病人分成不同群集」：每群裡病人的熵（越低越單一病人）
 patient.entropy <- gbm4@meta.data |> dplyr::count(raw_clusters, patient) |>
   group_by(raw_clusters) |> mutate(p = n / sum(n)) |>
   summarise(entropy = -sum(p * log(p)), n = sum(n), .groups = "drop")
@@ -162,7 +162,7 @@ write.csv(ctrl.wide, "output/tables/04_integration_controls.csv", row.names = FA
 # 整合原則：整合空間只用來註釋正常細胞、對齊免疫細胞；惡性細胞回未整合空間、按病人看。
 # （存檔統一放在 §5 結尾，那時 LISI 欄位才算完；這裡先不存，免得同一個大物件寫兩次）
 
-## ---- 5. integration-metrics ---------------------------------------- Q3 頁 16
+## ---- 5. integration-metrics ---------------------------------------- Q3 頁 16–17
 # 把「混得好不好」變成數字：每群病人組成 + LISI，兩個整合空間各算一次
 round(prop.table(table(gbm4$cca_clusters, gbm4$patient), 1), 2)          # 正常細胞的群：四位病人都該有
 library(lisi)                                     # remotes::install_github("immunogenomics/lisi")
@@ -190,7 +190,7 @@ write.csv(lisi.tab, "output/tables/04_lisi_by_celltype.csv", row.names = FALSE)
 #   CCA 的寡樹突與 OPC 反而比 Harmony 高（2.00 / 1.96 vs 1.91 / 1.90），惡性又保得比較住。
 #   → 這份資料選 Seurat CCA：正常細胞沒有輸，惡性細胞的病人差異保得比較多。
 #   注意 Neoplastic 的 lisi_pca 正好是 1.00 —— 未整合空間裡，每顆惡性細胞的鄰居清一色是同一位病人。
-#   這就是「惡性細胞按病人分島」最直接的量化證據，也是 Q2 說的「跨病人專屬性」那項惡性判定依據。
+#   這就是「惡性細胞按病人分成不同群集」最直接的量化證據，也是 Q2 說的「跨病人專屬性」那項惡性判定依據。
 ## <<< 參考答案
 saveRDS(gbm4, "output/rds/04_gbm4_integrated.rds")
 
