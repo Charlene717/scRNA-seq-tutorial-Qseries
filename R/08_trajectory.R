@@ -1,7 +1,7 @@
 # =====================================================================
 # 08_trajectory.R — 練習腳本 8：軌跡分析（Slingshot + tradeSeq）——一位病人的惡性細胞
 #
-# 對應影片：Q3 頁 66–69（§1 Slingshot + tradeSeq、§2 Monocle3 與手動選起點、§3 Monocle2 選配）
+# 對應影片：Q3 頁 72–75（§1 Slingshot + tradeSeq、§2 Monocle3 與手動選起點、§3 Monocle2 選配）
 # 輸入：output/rds/06_gbm4_final.rds
 # 輸出：output/figs/08_*.pdf、output/tables/08_traj_association.csv
 # 時間：§1 約 5–10 分鐘；§2 約 2 分鐘；§3（選配）約 5–10 分鐘
@@ -13,7 +13,7 @@ set.seed(1234)
 gbm4 <- readRDS("output/rds/06_gbm4_final.rds")
 for (d in c("output/figs", "output/rds", "output/tables")) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
-## ---- 1. trajectory -------------------------------------------------- Q3 頁 67–68
+## ---- 1. trajectory -------------------------------------------------- Q3 頁 73–74
 library(slingshot); library(tradeSeq)
 # 只在「同一位病人的惡性細胞」內做；subset 之後整條流程重跑
 mal1 <- subset(gbm4, malignant == "malignant" & patient == "BT_S2")
@@ -42,7 +42,7 @@ gam    <- fitGAM(counts = as.matrix(counts), pseudotime = mal1$pt[keep], cellWei
 # 而真正最強的 GFAP（849）掉到第六，「前幾名」就變成假的。
 assoc  <- associationTest(gam); assoc <- assoc[order(-assoc$waldStat), ]; head(assoc, 20)
 # 兩欄不要看混，它們排出來的名次常常不一樣：
-#   waldStat  = 變化模式有多「明確」（效應量 ÷ 不確定性）——跟第 36 頁講 DESeq2 的 stat 同一個道理
+#   waldStat  = 變化模式有多「明確」（效應量 ÷ 不確定性）——跟第 38 頁講 DESeq2 的 stat 同一個道理
 #   meanLogFC = 變化幅度有多「大」，而且是絕對值（1,335 個全正），看不出是升還是降
 # 本例：GPR37L1 幅度 4.94 卻只排第 20（waldStat 132）；COL1A2 幅度僅 0.74 卻排第 9（231）。
 # 挑基因畫圖、決定「誰在動」用 waldStat；報告效應量用 meanLogFC。
@@ -97,7 +97,7 @@ cat("\n== 最會「降」的 10 個 ==\n"); print(round(head(dd[order(dd$delta),
 # （注意這裡的 0.8 和 §2/§3「跨工具」的 0.8 不是同一件事：同一套工具換 seed 本來就該很接近，
 #   不同工具的圖形假設不同，標準要放寬——見 §3 結尾的分級。）
 
-## ---- 2. monocle3（含「自己選起點」的示範）--------------------------- Q3 頁 69
+## ---- 2. monocle3（含「自己選起點」的示範）--------------------------- Q3 頁 75
 # Monocle3 是最多人用的軌跡工具之一（graph-based、允許分支）。它的標準流程本來就要求你「選起點」，
 # 有兩種姿勢：
 #   (a) 手動互動式：order_cells(cds) 不給參數，RStudio 會跳出視窗讓你「點」起點——教學上最直觀，
@@ -127,7 +127,7 @@ if (requireNamespace("monocle3", quietly = TRUE) && requireNamespace("SeuratWrap
   message("未安裝 monocle3 / SeuratWrappers（見 00_setup.R 的選配段），跳過 §2。")
 }
 
-## ---- 3. monocle2（選配；經典 DDRTree，root_state 也是自己選）--------- Q3 頁 69
+## ---- 3. monocle2（選配；經典 DDRTree，root_state 也是自己選）--------- Q3 頁 75
 # Monocle2 是最早流行的版本（DDRTree），老論文常見。它把細胞分成幾個 State，
 # orderCells(root_state = ...) 就是「使用者自己選起點」：先畫圖看哪個 State 該當起點，再指定。
 if (requireNamespace("monocle", quietly = TRUE)) {
@@ -176,7 +176,7 @@ if (requireNamespace("monocle", quietly = TRUE)) {
 } else {
   message("未安裝 monocle（Monocle2，見 00_setup.R 的選配段），跳過 §3。")
 }
-# ---- 跨工具一致性怎麼判讀：不要用單一門檻，用分級 -------------------- Q3 頁 69
+# ---- 跨工具一致性怎麼判讀：不要用單一門檻，用分級 -------------------- Q3 頁 75
 # 「Spearman r > 0.8 才可信」是流傳很廣的說法，但它是慣例不是定律，而且對「不同工具」太嚴格：
 # Slingshot 學的是一條主曲線、Monocle2 是 DDRTree 的樹、Monocle3 是 UMAP 上的圖，
 # 三者的幾何假設不一樣，即使講的是同一件生物學，數值也不會貼得那麼近。

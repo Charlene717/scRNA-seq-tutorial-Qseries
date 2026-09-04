@@ -1,7 +1,7 @@
 # =====================================================================
 # 10_deconv_survival.R — 練習腳本 10：反卷積與存活分析（MuSiC + TCGA-GBM）——把 n = 4 帶到數百位病人
 #
-# 對應影片：Q3 頁 73–75（§1 反卷積、§2 KM 與 Cox）
+# 對應影片：Q3 頁 79–82（§1 反卷積、§2 KM 與 Cox）
 # 輸入：output/rds/06_gbm4_final.rds；TCGA-GBM Bulk（TCGAbiolinks 自動下載，需連網）
 # 輸出：output/tables/10_deconv_tcga_gbm.csv、output/figs/10_km_*.pdf
 # 時間：TCGA 下載約 10 分鐘（僅第一次），其餘約 5 分鐘
@@ -14,7 +14,7 @@ set.seed(1234)
 gbm4 <- readRDS("output/rds/06_gbm4_final.rds")
 for (d in c("output/figs", "output/rds", "output/tables")) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
-## ---- 1. deconvolution ----------------------------------------------- Q3 頁 75
+## ---- 1. deconvolution ----------------------------------------------- Q3 頁 82
 library(MuSiC); library(TCGAbiolinks); library(SummarizedExperiment); library(survival); library(survminer)
 ref <- as.SingleCellExperiment(JoinLayers(gbm4))
 ref$celltype_l1 <- ifelse(gbm4$malignant == "malignant", "Malignant",
@@ -41,7 +41,7 @@ bulk.mtx <- bulk.mtx[!duplicated(rownames(bulk.mtx)), ]
 # ★ 統計單位的問題，在這裡換到 Bulk 這一層。TCGA barcode 的第 4 段是樣本型別：
 #   01 = 原發腫瘤、02 = 復發、11 = 癌旁正常組織。三種混在一起做存活分析沒有意義。
 #   而且同一位病人常有兩三份 aliquot（例如 TCGA-06-0743 的 -1849-01 與 -A96S-41 是同一位），
-#   不去重就等於把同一個死亡事件算兩次——跟第 32 頁「cell-level DE 把細胞當樣本」是同一個錯，
+#   不去重就等於把同一個死亡事件算兩次——跟第 34 頁「cell-level DE 把細胞當樣本」是同一個錯，
 #   只是這裡重複的不是細胞而是定序檔案。
 bc <- colnames(bulk.mtx); part <- substr(bc, 1, 12); styp <- substr(bc, 14, 15)
 cat("\n== TCGA 樣本型別（01 原發／02 復發／11 正常）==\n"); print(table(styp))
@@ -51,7 +51,7 @@ bulk.mtx <- bulk.mtx[, sel]
 common <- intersect(rownames(bulk.mtx), rownames(ref))
 est <- music_prop(bulk.mtx = bulk.mtx[common, ], sc.sce = ref[common, ], clusters = "celltype_l1", samples = "patient")
 prop <- as.data.frame(est$Est.prop.weighted); write.csv(prop, "output/tables/10_deconv_tcga_gbm.csv")
-## ---- 2. survival ---------------------------------------------------- Q3 頁 75
+## ---- 2. survival ---------------------------------------------------- Q3 頁 82
 # 存活：免疫（巨噬）比例上下半
 clin <- as.data.frame(colData(bulk))[rownames(prop), ]
 clin$time  <- ifelse(clin$vital_status == "Dead", clin$days_to_death, clin$days_to_last_follow_up) / 30.4

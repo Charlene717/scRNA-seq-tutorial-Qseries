@@ -1,7 +1,7 @@
 # =====================================================================
 # 09_activity.R — 練習腳本 9：路徑與轉錄因子活性（decoupleR / PROGENy、SCENIC）
 #
-# 對應影片：Q3 頁 70–72（§1 PROGENy 路徑活性與條件比較、§2 SCENIC regulon）
+# 對應影片：Q3 頁 76–78（§1 PROGENy 路徑活性與條件比較、§2 SCENIC regulon）
 # 輸入：output/rds/06_gbm4_final.rds
 # 輸出：output/figs/09_*.pdf、output/tables/09_progeny_*.csv
 # 時間：decoupleR 約 2 分鐘；SCENIC（pySCENIC，Python）數小時，為選配
@@ -17,7 +17,7 @@ gbm4[["RNA"]] <- JoinLayers(gbm4[["RNA"]])
 if (!"data" %in% Layers(gbm4[["RNA"]])) gbm4 <- NormalizeData(gbm4)
 for (d in c("output/figs", "output/rds", "output/tables")) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
-## ---- 1. pathway-activity（decoupleR / PROGENy）---------------------- Q3 頁 71–72
+## ---- 1. pathway-activity（decoupleR / PROGENy）---------------------- Q3 頁 77–78
 library(decoupleR)
 net <- get_progeny(organism = "human", top = 500)
 mat <- as.matrix(LayerData(gbm4, layer = "data"))
@@ -51,13 +51,13 @@ print(t.test(pa$hyp_Tumor[ok], pa$hyp_Periphery[ok], paired = TRUE))
 #      BT_S1 之所以方向相反，最合理的解釋就是這個，不是生物學。
 #   ② 就算數字可信，n = 3 也測不到東西：p = 0.834、平均差 0.30、95% CI [-5.19, 5.80]。
 #      區間寬到從 -5 跨到 +5，意思是「這個檢定看不出來」，不是「兩個部位沒有差別」——
-#      不顯著與沒差異是兩件事，第 47 頁講的功效就是在講這個。
-# 對照組：第 42 頁的 GSEA 看得到「核心缺氧」，那是免疫細胞、8 個樣本、幾千個基因的排名；
-#         第 67 頁的軌跡看得到缺氧基因上升，那是惡性細胞內部沿 pseudotime 的連續變化。
+#      不顯著與沒差異是兩件事，第 52 頁講的功效就是在講這個。
+# 對照組：第 47 頁的 GSEA 看得到「核心缺氧」，那是免疫細胞、8 個樣本、幾千個基因的排名；
+#         第 73 頁的軌跡看得到缺氧基因上升，那是惡性細胞內部沿 pseudotime 的連續變化。
 #         同一套生物學，換個統計單位就從看得到變成看不到——差別不在生物學。
 write.csv(pa, "output/tables/09_progeny_hypoxia_by_sample.csv", row.names = FALSE)
 DefaultAssay(gbm4) <- "RNA"
-## ---- 2. scenic（選配）----------------------------------------------- Q3 頁 72
+## ---- 2. scenic（選配）----------------------------------------------- Q3 頁 78
 # SCENIC（pySCENIC，Python）：R 端匯出 loom，跑完讀回
 #   library(SeuratDisk); SaveLoom(gbm4, "output/rds/09_gbm4.loom")   # 或 loomR / anndata
 #   pyscenic grn output/09_gbm4.loom hs_hgnc_tfs.txt -o output/09_adj.csv --num_workers 8
