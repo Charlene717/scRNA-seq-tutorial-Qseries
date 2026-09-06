@@ -2,8 +2,6 @@
 
 **難度**：★★★ ｜ **預估時間**：2 個工作天 ｜ **對應 Q 系列**：Q3・軌跡、Q3・惡性判定、Q3・下游路線（AML 戰法）｜ **對應練習腳本**：`R/01`–`R/10` 全套（階段 D 逐步對應），重點在 `R/05_infercnv.R`、`R/08_trajectory.R` ｜ **資料集**：GSE116256（本題獨用）
 
-**原題**：B 系列 進階05（本卡為 Q 系列改寫版，B 系列原檔未更動）
-
 ## 背景與研究主題
 
 van Galen 等人（2019）用 Seq-Well 定序了 16 位 AML 病人（多個治療時點）與 5 位健康捐贈者的骨髓細胞。AML 是「惡性判定」最刁鑽的場景：惡性 blast 不是長成一團與正常細胞截然不同的怪東西，而是**模仿正常造血階層**——從 HSC-like 到單核球-like 都有，marker 幾乎全部與正常細胞重疊。這正是 Q3・下游路線 AML 戰法的核心：**用健康 donor 建立正常參照系，惡性是「偏離參照系」定義出來的**。但「偏離」本身怎麼量化，其實有好幾條路，答案未必一致——這是本題發表導向的切口。你的研究主題：
@@ -92,7 +90,7 @@ GSEA 結果表與 enrichment plot；兩條件的 CellChat 比較圖 + 組成校�
 讀 `_從練習到投稿指南.md` 後回答：
 
 - **訊號分類與穩健性**：你選的路線（三路分歧的規律／病人分型）屬於指南第二節的哪一類？「以病人為單位」這關——分型結論是每位病人一個點，還是被某位細胞數暴多的病人撐起來？去 donor、換方法後還穩嗎？
-- **驗證設計**：健康參照系這半邊，現成的交叉檢查場是**B 系列 基礎05 的 bmcite 骨髓 CITE-seq**——用它重建一次正常階層（還有 ADT 蛋白證據可幫你錨定註解），看你的參照系是不是 5 位 donor 的偶然。AML 那半邊的獨立驗證，需要另一個含健康對照的 AML 單細胞資料集——**自己上 GEO 查（關鍵字如「AML bone marrow scRNA-seq」，資料集規模與格式以 GEO 頁為準）**，把找到的候選與適用性評估寫進來，這個查找本身就是練習。
+- **驗證設計**：健康參照系這半邊，現成的交叉檢查場是**SeuratData 的 `bmcite` 骨髓 CITE-seq（約 30,672 顆細胞、25 個 ADT 蛋白）**——用它重建一次正常階層（還有 ADT 蛋白證據可幫你錨定註解），看你的參照系是不是 5 位 donor 的偶然。AML 那半邊的獨立驗證，需要另一個含健康對照的 AML 單細胞資料集——**自己上 GEO 查（關鍵字如「AML bone marrow scRNA-seq」，資料集規模與格式以 GEO 頁為準）**，把找到的候選與適用性評估寫進來，這個查找本身就是練習。
 - **novelty 定位**：「投影到正常參照系找 blast」是 van Galen 已發表的思路，後續也有多篇方法（PubMed 查「AML single-cell malignant classifier / reference projection」）。你的角度——三路量化的系統比較、或 blast 組成分型接臨床——查完文獻後還剩多少新？
 - **缺什麼＋目標期刊層級**：方法學路線缺「多資料集 benchmark」，補齊可往 Briefings in Bioinformatics 層級；生物學分型路線缺獨立 AML 隊列＋臨床結局，補齊才夠格談領域期刊，否則落點是 Scientific Reports 層級或先掛 bioRxiv。
 
@@ -135,4 +133,4 @@ GSEA 結果表與 enrichment plot；兩條件的 CellChat 比較圖 + 組成校�
 ## 參考文獻
 
 - van Galen P, et al. Single-Cell RNA-Seq Reveals AML Hierarchies Relevant to Disease Progression and Immunity. *Cell* (2019). GEO: GSE116256.
-- Stuart T, Butler A, et al. Comprehensive Integration of Single-Cell Data. *Cell* (2019).（bmcite 交叉檢查場，見 B 系列 基礎05）
+- Stuart T, Butler A, et al. Comprehensive Integration of Single-Cell Data. *Cell* (2019).（bmcite 交叉檢查場）

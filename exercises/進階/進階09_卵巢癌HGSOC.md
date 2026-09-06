@@ -2,8 +2,6 @@
 
 **難度**：★★★ ｜ **預估時間**：2 個工作天 ｜ **對應 Q 系列**：Q2・註解、Q3・整合、Q3・通訊、Q3・下游路線 ｜ **對應練習腳本**：`R/01`–`R/10` 全套（階段 D 逐步對應），重點在 `R/04_multipatient.R` ｜ **資料集**：GSE184880（本題獨用）
 
-**原題**：B 系列 進階15（本卡為 Q 系列改寫版，B 系列原檔未更動）
-
 ## 背景與研究主題
 
 高級別漿液性卵巢癌（HGSOC）確診時多已晚期，早期樣本罕見——Xu 等人（2022）的資料因此珍貴：59,324 顆細胞、7 位**未治療** HGSOC 病人 + 5 份正常卵巢，且腫瘤樣本涵蓋不同臨床分期（各樣本分期細節以 GEO 頁為準）。未治療是關鍵：你看到的微環境重塑沒有被化療攪過。這讓兩個問題變得可問：隨分期推進，惡性細胞程式與微環境組成是否呈梯度變化？正常卵巢到腫瘤之間，哪些細胞型別被重塑得最徹底？但在碰到生物學之前，你會先撞上 GEO 最常見的陷阱之一：**supplementary 檔案是 per-sample 的 matrix/barcodes/genes 三件套，但檔名帶著 GSM 前綴、不是 Read10X 認得的標準名**——改名、分資料夾、批次讀入，這是本題的正面教學。你的研究主題：
@@ -92,7 +90,7 @@ GSEA 結果表與 enrichment plot；兩條件的 CellChat 比較圖 + 組成校�
 讀 `_從練習到投稿指南.md` 後回答：
 
 - 你的訊號屬於指南第二節的哪一類？分期梯度類的結論最容易犯統計單位錯誤——你的梯度是 7 個病人層級的觀察，不是五萬顆細胞的迴歸，句子強度要相稱。
-- **驗證設計**：bulk 端接 **TCGA-OV**（沿 B 系列 進階10 的反卷積 + 存活流程）——TCGA-OV 是最早的 TCGA cohort 之一，樣本數大、含存活；你的微環境訊號若真隨疾病進程走，在 bulk 比例上應與 stage/存活有方向一致的關聯。單細胞端的獨立 HGSOC cohort 自查（GEO 搜尋，這是本題的文獻功課）。
+- **驗證設計**：bulk 端接 **TCGA-OV**（沿 階段 D7 的反卷積 + 存活流程）——TCGA-OV 是最早的 TCGA cohort 之一，樣本數大、含存活；你的微環境訊號若真隨疾病進程走，在 bulk 比例上應與 stage/存活有方向一致的關聯。單細胞端的獨立 HGSOC cohort 自查（GEO 搜尋，這是本題的文獻功課）。
 - **novelty 定位**：卵巢癌微環境單細胞文獻成長很快——PubMed 查你的重塑軸線是否已被描述；「未治療 + 含早期樣本 + 正常對照」是這個資料集的稀缺性，你的角度若吃到這個稀缺性（治療未攪動的重塑順序），novelty 才立得住。
 - 若要成文：缺哪一塊（獨立 cohort 重現／TCGA-OV 方向一致性／機制故事）？n=7 的梯度觀察單獨不夠成文，加上 bulk 驗證後對照指南第四節評估合理層級。
 
@@ -129,10 +127,10 @@ R 版：`files <- list.files(raw_dir, full.names=TRUE)`，從檔名 regex 抽樣
 
 ## 進階挑戰
 
-- 沿 B 系列 進階10 流程建 signature 反卷積 TCGA-OV：你的重塑軸線型別比例與 stage、存活的關聯方向，跟單細胞端一致嗎？
+- 沿 階段 D7 的流程建 signature 反卷積 TCGA-OV：你的重塑軸線型別比例與 stage、存活的關聯方向，跟單細胞端一致嗎？
 - 把你的惡性程式與文獻中的 HGSOC bulk 分子亞型（自查：TCGA 2011 的四亞型）做對應——單細胞程式能不能解釋 bulk 亞型的組成基礎（類似進階08 對 CMS 做的事）？
 
 ## 參考文獻
 
 - Xu J, et al. Single-cell RNA sequencing reveals the tissue architecture in human high-grade serous ovarian cancer. *Clinical Cancer Research* (2022). GEO: GSE184880.
-- Colaprico A, et al. TCGAbiolinks（TCGA-OV 驗證用，流程見 B 系列 進階10）. *Nucleic Acids Research* (2016).
+- Colaprico A, et al. TCGAbiolinks（TCGA-OV 驗證用，流程見 階段 D7）. *Nucleic Acids Research* (2016).
