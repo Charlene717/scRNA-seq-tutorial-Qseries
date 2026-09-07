@@ -26,12 +26,26 @@
   nav button { background: var(--card); border: 1px solid var(--line); padding: .45rem 1rem;
                border-radius: 999px; cursor: pointer; font-size: .92rem; color: var(--ink); }
   nav button.on { background: var(--green); border-color: var(--green); color: #fff; font-weight: 700; }
-  .score { font-size: .9rem; color: var(--muted); margin: .3rem 0 1rem; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
-  .score b { color: var(--green-dark); }
-  .score button { background: none; border: 1px solid var(--line); border-radius: 6px; padding: .2rem .7rem;
-                  cursor: pointer; color: var(--muted); font-size: .85rem; }
+
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+           padding: .8rem 1rem; margin: .6rem 0 1rem; }
+  .bar { height: 9px; border-radius: 999px; background: #e8eeeb; overflow: hidden; display: flex; margin: .1rem 0 .55rem; }
+  .bar i { display: block; height: 100%; }
+  .bar .ok { background: var(--green); } .bar .no { background: var(--red); }
+  .stats { font-size: .9rem; color: var(--muted); display: flex; gap: .9rem; flex-wrap: wrap; align-items: center; }
+  .stats b { color: var(--green-dark); }
+  .tools { display: flex; gap: .45rem; flex-wrap: wrap; align-items: center; margin-top: .7rem;
+           padding-top: .7rem; border-top: 1px dashed var(--line); }
+  .tools .lbl { font-size: .82rem; color: var(--muted); margin-right: .1rem; }
+  .tools button { background: #fafcfb; border: 1px solid var(--line); border-radius: 999px;
+                  padding: .28rem .8rem; cursor: pointer; font-size: .85rem; color: var(--ink); }
+  .tools button:hover { border-color: var(--mint); }
+  .tools button.on { background: var(--green); border-color: var(--green); color: #fff; font-weight: 700; }
+  .tools .sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 .25rem; }
+
   .q { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
-       padding: 1.1rem 1.2rem; margin-bottom: 1rem; }
+       padding: 1.1rem 1.2rem; margin-bottom: 1rem; scroll-margin-top: 1rem; }
+  .q.focus { border-color: var(--mint); box-shadow: 0 0 0 3px #30c5a633; }
   .q .stem { font-weight: 700; margin-bottom: .8rem; }
   .q .stem .no { color: var(--green); margin-right: .4rem; }
   .opt { display: block; width: 100%; text-align: left; background: #fafcfb; border: 1px solid var(--line);
@@ -50,10 +64,13 @@
   .verdict { display: none; font-weight: 700; margin-top: .6rem; font-size: .95rem; }
   .q.done .verdict { display: block; }
   .verdict.ok { color: var(--green-dark); } .verdict.no { color: var(--red); }
+  .empty { color: var(--muted); text-align: center; padding: 2.4rem 1rem; font-size: .95rem; }
   .summary { display: none; background: var(--green-dark); color: #fff; border-radius: 10px;
              padding: 1rem 1.2rem; margin: 1.2rem 0; font-size: 1rem; }
   .summary.show { display: block; }
   footer { color: var(--muted); font-size: .8rem; margin-top: 2rem; }
+  .hint { color: var(--muted); font-size: .8rem; margin-top: .5rem; }
+  @media (max-width: 560px) { .hint { display: none; } }
 </style>
 </head>
 <body>
@@ -64,7 +81,14 @@
 
 <div class="wrap">
   <nav id="tabs"></nav>
-  <div class="score"><span id="t-score"></span><button id="t-reset" onclick="resetChapter()"></button></div>
+
+  <div class="panel">
+    <div class="bar"><i class="ok" id="bar-ok"></i><i class="no" id="bar-no"></i></div>
+    <div class="stats" id="t-score"></div>
+    <div class="tools" id="tools"></div>
+    <div class="hint" id="t-hint"></div>
+  </div>
+
   <div class="summary" id="summary"></div>
   <div id="list"></div>
   <footer id="t-foot"></footer>
@@ -74,53 +98,153 @@
 <script>
   const SERIES = Object.keys(subjects)[0];
   const CHAPTERS = Object.keys(subjects[SERIES]);
+  const TOTAL = CHAPTERS.reduce((n, c) => n + subjects[SERIES][c].length, 0);
+  const SIG = CHAPTERS.map(c => subjects[SERIES][c].length).join("-");   // 題庫指紋：題數變了就丟掉舊進度
+  const KEY = "qseries-quiz-v1";
+
   const UI = {
-    zh: { title: "Q 系列 · 快速上手篇 — 自測題庫", sub: "27 題單選：每章前 3 題與影片內自測相同",
+    zh: { title: "Q 系列 · 快速上手篇 — 自測題庫",
+          sub: `${TOTAL} 題單選 ｜ 進度自動保存 ｜ 可篩選與隨機抽題`,
           score: (a, n, c) => `本章 ${n} 題 ｜ 已作答 <b>${a}</b> ｜ 答對 <b>${c}</b>`,
-          reset: "重新作答", foot: "題目資料：quiz/Q系列_自測題庫_data.js ｜ scRNA-seq 教學影片系列 · Q 系列",
+          rate: r => `正確率 <b>${r}%</b>`,
+          view: "顯示", all: "全部", todo: "未作答", wrong: "答錯",
+          draw: "隨機抽", d10: "10 題", d20: "20 題", dall: "整章",
+          reset: "清除本章作答", resetAll: "清除全部進度",
+          foot: "題目資料：quiz/Q系列_自測題庫_data.js ｜ scRNA-seq 教學影片系列 · Q 系列",
+          hint: "鍵盤：A–D 或 1–4 作答 ｜ ↑ ↓（或 J K）換題 ｜ Home 回第一題",
           ok: "答對了", no: k => `答錯——正確答案是 ${k}`,
-          done: (c, n) => `本章完成：${c} / ${n}` },
-    en: { title: "Series Q · Quick Start — Self-test", sub: "27 single-choice questions; the first 3 per chapter match the in-video self-tests",
+          done: (c, n) => `本章完成：${c} / ${n}`,
+          emptyTodo: "這一章都作答完了。切到「答錯」可以只複習錯的題目。",
+          emptyWrong: "這個範圍裡沒有答錯的題目。",
+          nosave: "（這個瀏覽器不允許保存進度，重新整理後會歸零）" },
+    en: { title: "Series Q · Quick Start — Self-test",
+          sub: `${TOTAL} single-choice questions ｜ progress saved ｜ filter and random draw`,
           score: (a, n, c) => `${n} questions ｜ answered <b>${a}</b> ｜ correct <b>${c}</b>`,
-          reset: "Reset chapter", foot: "Question data: quiz/Q系列_自測題庫_data.js ｜ scRNA-seq video series · Series Q",
+          rate: r => `accuracy <b>${r}%</b>`,
+          view: "Show", all: "All", todo: "Unanswered", wrong: "Incorrect",
+          draw: "Draw", d10: "10", d20: "20", dall: "Whole chapter",
+          reset: "Clear this chapter", resetAll: "Clear all progress",
+          foot: "Question data: quiz/Q系列_自測題庫_data.js ｜ scRNA-seq video series · Series Q",
+          hint: "Keyboard: A–D or 1–4 to answer ｜ ↑ ↓ (or J K) to move ｜ Home for the first question",
           ok: "Correct", no: k => `Incorrect — the answer is ${k}`,
-          done: (c, n) => `Chapter complete: ${c} / ${n}` },
+          done: (c, n) => `Chapter complete: ${c} / ${n}`,
+          emptyTodo: "Every question in this chapter is answered. Switch to Incorrect to review the ones you missed.",
+          emptyWrong: "No incorrect answers in this range.",
+          nosave: "(this browser will not save progress; it resets on reload)" },
   };
-  let lang = "zh", chapter = CHAPTERS[0];
-  const state = {};   // chapter -> {answers: {idx: pickedKey}}
-  CHAPTERS.forEach(c => state[c] = { answers: {} });
+
+  let lang = "zh", chapter = CHAPTERS[0], filter = "all", focus = 0, canSave = true;
+  const state = {};                                   // chapter -> {answers:{}, sample:null}
+  CHAPTERS.forEach(c => state[c] = { answers: {}, sample: null });
+
+  /* ---------- 進度保存（瀏覽器不允許時自動退回不保存） ---------- */
+  function save() {
+    if (!canSave) return;
+    try { localStorage.setItem(KEY, JSON.stringify({ sig: SIG, lang, chapter, state })); }
+    catch (e) { canSave = false; }
+  }
+  function load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (d.sig !== SIG) return;                      // 題庫更新過，舊進度作廢
+      lang = d.lang || lang;
+      chapter = CHAPTERS.includes(d.chapter) ? d.chapter : chapter;
+      CHAPTERS.forEach(c => { if (d.state && d.state[c]) state[c] = d.state[c]; });
+    } catch (e) { canSave = false; }
+  }
 
   function chapLabel(c) { return lang === "en" && typeof labels_en !== "undefined" && labels_en[c] ? labels_en[c] : c; }
   function f(q, k) { return lang === "en" && q[k + "_en"] ? q[k + "_en"] : q[k]; }
+  function qs() { return subjects[SERIES][chapter]; }
+  function st() { return state[chapter]; }
 
-  function setLang(l) { lang = l;
-    document.getElementById("b-zh").classList.toggle("on", l === "zh");
-    document.getElementById("b-en").classList.toggle("on", l === "en");
-    render(); }
-  function setChapter(c) { chapter = c; render(); }
-  function resetChapter() { state[chapter].answers = {}; render(); }
-
-  function pick(i, key) {
-    if (state[chapter].answers[i] !== undefined) return;
-    state[chapter].answers[i] = key; render();
+  /* 目前這一章要顯示哪些題（先套隨機抽題，再套篩選） */
+  function view() {
+    const base = st().sample || qs().map((_, i) => i);
+    const a = st().answers;
+    if (filter === "todo")  return base.filter(i => a[i] === undefined);
+    if (filter === "wrong") return base.filter(i => a[i] !== undefined && a[i] !== qs()[i].ans);
+    return base;
   }
 
-  function render() {
-    const t = UI[lang], qs = subjects[SERIES][chapter], st = state[chapter].answers;
+  function setLang(l) { lang = l; save(); render(); }
+  function setChapter(c) { chapter = c; focus = 0; save(); render(); }
+  function setFilter(v) { filter = v; focus = 0; render(); }
+  function draw(n) {
+    if (n === 0) { st().sample = null; }
+    else {
+      const idx = qs().map((_, i) => i);
+      for (let i = idx.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; }
+      st().sample = idx.slice(0, Math.min(n, idx.length)).sort((a, b) => a - b);
+    }
+    filter = "all"; focus = 0; save(); render();
+  }
+  function resetChapter() { st().answers = {}; st().sample = null; filter = "all"; focus = 0; save(); render(); }
+  function resetAll() { CHAPTERS.forEach(c => state[c] = { answers: {}, sample: null }); filter = "all"; focus = 0; save(); render(); }
+
+  function pick(i, key) {
+    if (st().answers[i] !== undefined) return;
+    st().answers[i] = key;
+    const v = view(), at = v.indexOf(i);
+    const nxt = v.slice(at + 1).find(j => st().answers[j] === undefined);
+    if (nxt !== undefined) focus = v.indexOf(nxt);
+    save(); render();
+  }
+
+  /* ---------- 鍵盤 ---------- */
+  document.addEventListener("keydown", e => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const v = view(); if (!v.length) return;
+    const k = e.key.toLowerCase();
+    if (["arrowdown", "j"].includes(k)) { focus = Math.min(focus + 1, v.length - 1); e.preventDefault(); render(true); return; }
+    if (["arrowup", "k"].includes(k))   { focus = Math.max(focus - 1, 0); e.preventDefault(); render(true); return; }
+    if (k === "home") { focus = 0; e.preventDefault(); render(true); return; }
+    const map = { a: "A", b: "B", c: "C", d: "D", 1: "A", 2: "B", 3: "C", 4: "D" };
+    if (map[k]) { const i = v[focus]; if (i !== undefined && qs()[i][map[k]]) { e.preventDefault(); pick(i, map[k]); } }
+  });
+
+  function render(scroll) {
+    const t = UI[lang], all = qs(), a = st().answers, v = view();
     document.getElementById("t-title").textContent = t.title;
     document.getElementById("t-sub").textContent = t.sub;
-    document.getElementById("t-reset").textContent = t.reset;
     document.getElementById("t-foot").textContent = t.foot;
-    document.getElementById("tabs").innerHTML = CHAPTERS.map(c =>
-      `<button class="${c === chapter ? "on" : ""}" onclick="setChapter('${c}')">${chapLabel(c)}（${subjects[SERIES][c].length}）</button>`).join("");
-    const answered = Object.keys(st).length;
-    const correct = Object.entries(st).filter(([i, k]) => qs[i].ans === k).length;
-    document.getElementById("t-score").innerHTML = t.score(answered, qs.length, correct);
+    document.getElementById("t-hint").textContent = t.hint + (canSave ? "" : "　" + t.nosave);
+    document.getElementById("b-zh").classList.toggle("on", lang === "zh");
+    document.getElementById("b-en").classList.toggle("on", lang === "en");
+
+    document.getElementById("tabs").innerHTML = CHAPTERS.map(c => {
+      const n = subjects[SERIES][c].length, done = Object.keys(state[c].answers).length;
+      return `<button class="${c === chapter ? "on" : ""}" onclick="setChapter('${c}')">${chapLabel(c)}（${done}/${n}）</button>`;
+    }).join("");
+
+    const answered = Object.keys(a).length;
+    const correct = Object.entries(a).filter(([i, k]) => all[i].ans === k).length;
+    const wrong = answered - correct;
+    document.getElementById("bar-ok").style.width = (100 * correct / all.length) + "%";
+    document.getElementById("bar-no").style.width = (100 * wrong / all.length) + "%";
+    document.getElementById("t-score").innerHTML =
+      t.score(answered, all.length, correct) + (answered ? " ｜ " + t.rate(Math.round(100 * correct / answered)) : "");
+
+    const nSample = st().sample ? st().sample.length : 0;
+    document.getElementById("tools").innerHTML =
+      `<span class="lbl">${t.view}</span>` +
+      [["all", t.all], ["todo", t.todo], ["wrong", t.wrong]].map(([k, lbl]) =>
+        `<button class="${filter === k ? "on" : ""}" onclick="setFilter('${k}')">${lbl}</button>`).join("") +
+      `<span class="sep"></span><span class="lbl">${t.draw}</span>` +
+      [[10, t.d10], [20, t.d20], [0, t.dall]].map(([n, lbl]) =>
+        `<button class="${(n === 0 && !nSample) || (n && nSample === n) ? "on" : ""}" onclick="draw(${n})">${lbl}</button>`).join("") +
+      `<span class="sep"></span>` +
+      `<button onclick="resetChapter()">${t.reset}</button><button onclick="resetAll()">${t.resetAll}</button>`;
+
     const sm = document.getElementById("summary");
-    sm.classList.toggle("show", answered === qs.length);
-    sm.textContent = t.done(correct, qs.length);
-    document.getElementById("list").innerHTML = qs.map((q, i) => {
-      const done = st[i] !== undefined, picked = st[i];
+    sm.classList.toggle("show", answered === all.length && all.length > 0);
+    sm.textContent = t.done(correct, all.length);
+
+    if (focus > v.length - 1) focus = Math.max(0, v.length - 1);
+    document.getElementById("list").innerHTML = v.length ? v.map((i, pos) => {
+      const q = all[i], done = a[i] !== undefined, picked = a[i];
       const opts = ["A", "B", "C", "D"].filter(k => q[k]).map(k => {
         let cls = "opt";
         if (done && k === q.ans) cls += " correct";
@@ -129,11 +253,18 @@
       }).join("");
       const verdict = done ? (picked === q.ans
         ? `<div class="verdict ok">✓ ${t.ok}</div>` : `<div class="verdict no">✗ ${t.no(q.ans)}</div>`) : "";
-      return `<div class="q${done ? " done" : ""}">
+      return `<div class="q${done ? " done" : ""}${pos === focus ? " focus" : ""}" id="q${i}">
         <div class="stem"><span class="no">${i + 1}.</span>${f(q, "stem")}</div>
         ${opts}${verdict}<div class="exp">${f(q, "exp")}</div></div>`;
-    }).join("");
+    }).join("") : `<div class="empty">${filter === "wrong" ? t.emptyWrong : t.emptyTodo}</div>`;
+
+    if (scroll && v.length) {
+      const el = document.getElementById("q" + v[focus]);
+      if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
   }
+
+  load();
   render();
 </script>
 </body>
