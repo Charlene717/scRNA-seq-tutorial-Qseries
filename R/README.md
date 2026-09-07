@@ -27,12 +27,17 @@
 
 ## 適合誰
 
-| 你想要 | 看 | 做 | 時間 |
+| 你想要 | 看 | 做 | 動手時間預估 |
 |---|---|---|---|
-| 看懂單細胞論文、跟生資合作者對話 | Q1 | — | 30 分 |
-| 自己分析一份樣本（QC → 分群 → 註釋） | Q1 + Q2 | 腳本 00–03 | 1.5 小時 + 半天 |
-| 多樣本比較、判定惡性、下游分析與發表 | Q1–Q3 | 腳本 00–10 | 2.5 小時 + 兩天 |
-| 把學到的東西練成一份研究 | Q1–Q3 | 腳本 00–10 + [`exercises/`](exercises/) | 半天～三天／題 |
+| 看懂單細胞論文、跟生資合作者對話 | Q1 | — | —（只看影片） |
+| 自己分析一份樣本（QC → 分群 → 註釋） | Q1 + Q2 | 腳本 00–03 | 1–2 天 |
+| 多樣本比較、判定惡性、下游分析與發表 | Q1–Q3 | 腳本 00–10 | 3–5 天 |
+| 把學到的東西練成一份研究 | Q1–Q3 | 腳本 00–10 + [`exercises/`](exercises/) | 一條進階主線 3–4 題，約 2–3 週 |
+
+**時間預估怎麼看**：這裡估的是動手的時間，不含看影片。估計假設你會停下來想每個參數的理由、
+把「數字、理由、紀錄」寫下來——只求「跑完不報錯」會快很多，但那不是這門課要教的。
+腳本 00–10 光是跑完就要約 2–4 小時機器時間（inferCNV 與 CellChat 佔大半），套件安裝與資料下載的等待另計。
+進階練習題以一題 1.5–3 個工作天估；若要做到能投稿，文獻回顧、外部資料集驗證與寫作是另一段路。
 
 前置需求：會開 RStudio、跑過幾行 R。不需要單細胞經驗。
 
@@ -82,7 +87,7 @@
 |---|---|---|---|
 | 10x GBM 5k<br>（[10x Datasets](https://www.10xgenomics.com/datasets)） | 一位 GBM 病人，10x 3' v3，5,604 顆 | Q2：01–03 | ≈&nbsp;30&nbsp;MB |
 | [GSE84465](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE84465)<br>（Darmanis et al. 2017） | 4 病人 × 核心/邊緣，Smart-seq2，3,589 顆，含作者標籤 | Q3：04–09 | ≈&nbsp;20&nbsp;MB |
-| TCGA-GBM | Bulk RNA-seq + 臨床存活，`10_deconv_survival.R` 經 TCGAbiolinks 下載 | Q3：10 | ≈&nbsp;1&nbsp;GB |
+| [TCGA-GBM](https://portal.gdc.cancer.gov/projects/TCGA-GBM)<br>（GDC Data Portal） | Bulk RNA-seq + 臨床存活，`10_deconv_survival.R` 經 TCGAbiolinks 下載 | Q3：10 | ≈&nbsp;1&nbsp;GB |
 
 本倉庫不含任何資料檔與分析輸出（見 `.gitignore`）。
 
