@@ -1,6 +1,6 @@
 # scRNA-seq Q 系列 · 快速上手篇
 
-> 三集影片、約 2.5 小時、十二支可實跑的 R 腳本——從「單細胞 RNA 定序在看什麼」到多樣本整合、惡性細胞判定、差異表達與下游分析，完成一份完整的 scRNA-seq 分析。
+> 三集主課程＋一集補充篇、約 3 小時、十二支可實跑的 R 腳本——從「單細胞 RNA 定序在看什麼」到多樣本整合、惡性細胞判定、差異表達與下游分析，完成一份完整的 scRNA-seq 分析。
 
 ![code: MIT](https://img.shields.io/badge/code-MIT-blue.svg)
 ![content: CC BY--NC 4.0](https://img.shields.io/badge/content-CC%20BY--NC%204.0-lightgrey.svg)
@@ -16,8 +16,9 @@
 | Q1 | 觀念篇：單細胞 RNA 定序在看什麼、怎麼運作、怎麼讀圖 | [中文](slides/Q1_觀念篇_投影片_ZH.pdf)&nbsp;｜&nbsp;[EN](slides/Q1_Concepts_EN.pdf) | — |
 | Q2 | 實作篇 I：單一樣本標準流程——從原始矩陣到細胞註釋 | [中文](slides/Q2_實作篇I_單一樣本標準流程_投影片_ZH.pdf)&nbsp;｜&nbsp;[EN](slides/Q2_Single_Sample_Pipeline_EN.pdf) | [00–03](R/) |
 | Q3 | 實作篇 II：多樣本整合與下游分析 | [中文](slides/Q3_實作篇II_多樣本分析_投影片_ZH.pdf)&nbsp;｜&nbsp;[EN](slides/Q3_Multi_Sample_Analysis_EN.pdf) | [04–10](R/) |
+| Q4 | 補充篇：工具生態、AI 輔助與基礎模型 | [中文](slides/Q4_補充篇_投影片_ZH.pdf)&nbsp;｜&nbsp;[EN](slides/Q4_Supplement_EN.pdf) | — |
 
-影片連結：錄製中，上線後補。三份投影片共 201 頁，**中英雙語各一套**（PDF）。
+影片連結：錄製中，上線後補。四份投影片共 225 頁（主課程 201 頁＋補充篇 24 頁），**中英雙語各一套**（PDF）。
 
 **九句話骨架**——整門課要帶走的東西：
 
@@ -48,6 +49,10 @@
 ### Q3 · 實作篇 II：多樣本整合與下游分析（88 頁，腳本 04–10）
 
 資料：GSE84465（Darmanis et al. 2017；4 位 GBM 病人 × 腫瘤核心/浸潤邊緣，Smart-seq2，3,589 顆，含作者的細胞型別標籤——可以「對答案」）＋ TCGA-GBM Bulk。內容包括：多病人整合的兩難與方法地圖（Seurat CCA 為預設、Harmony 作比較、正負對照與 LISI）；inferCNV 判定惡性（CNV 分數與相關、四象限、三角驗證、與作者標籤對答案）；組成分析（propeller）；差異表達正確做法（pseudoreplication 為什麼錯、每型別各自 pseudobulk + 配對 DESeq2、三種 log2FC 的用途、火山圖讀法、不能 pseudobulk 時的 cell-level 備案與三道防線）；富集分析（ORA vs GSEA、Hallmark/GO/KEGG、NES 熱圖與 dotplot 讀法、五個常見錯）；細胞通訊（CellChat 六種圖的畫法與讀法、兩條件比較、LIANA 交叉驗證）；軌跡分析（Slingshot + tradeSeq、Monocle3/Monocle2 比較、手動選起點）；路徑與 TF 活性（decoupleR/PROGENy、SCENIC）；反卷積與存活分析（MuSiC + TCGA、KM/Cox）。
+
+### Q4 · 補充篇：工具生態、AI 輔助與基礎模型（24 頁，無腳本）
+
+主課程之後的視野擴充，改寫自作者的研究簡報。內容包括：scRNA-seq 工具生態（scrna-tools.org 收錄超過 1,800 個工具、為什麼新工具持續出現、怎麼把目錄當地圖用）；AI 輔助的工具選擇與實作（五步選擇流程、向 AI 提問的要領、Visium HD 細胞分割的真實案例）；細胞註釋的可靠度診斷（參考集缺型別的沉默失敗、參考集品質重於演算法、VICTOR 標籤診斷、GPT-4 輔助註釋的定位）；單細胞基礎模型（十年演進時間軸、scGPT 的預訓練＋微調典範、能力與限制對照表）。
 
 ## 練習腳本（R/）
 
@@ -112,7 +117,7 @@
 scRNA-seq-tutorial-Qseries/
 ├── README.md
 ├── LICENSE                  # 程式碼：MIT
-├── slides/                  # 投影片 PDF，中英各三份
+├── slides/                  # 投影片 PDF，中英各四份
 ├── docx/                    # 課程總索引
 ├── R/                       # 十二支練習腳本（完整版）+ 練習手冊
 │   └── 練習版/              # 關鍵參數挖空版（## TODO ▶ 提示）
