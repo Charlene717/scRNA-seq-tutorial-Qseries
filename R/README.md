@@ -1,6 +1,6 @@
 # scRNA-seq Q 系列 · 快速上手篇
 
-> 三集影片、約 2.5 小時、十二支可實跑的 R 腳本——從「單細胞 RNA 定序在看什麼」到多樣本整合、惡性細胞判定、差異表達與下游分析，完成一份完整的 scRNA-seq 分析。
+> 三集課程、約 2.5 小時、十二支可實跑的 R 腳本，外加 23 題課後實作練習——從「單細胞 RNA 定序在看什麼」到多樣本整合、惡性細胞判定、差異表達與下游分析，完成一份完整的 scRNA-seq 分析。
 
 ![code: MIT](https://img.shields.io/badge/code-MIT-blue.svg)
 ![content: CC BY--NC 4.0](https://img.shields.io/badge/content-CC%20BY--NC%204.0-lightgrey.svg)
@@ -17,7 +17,7 @@
 | Q2 | 實作篇 I：單一樣本標準流程——從原始矩陣到細胞註釋 | [中文](slides/Q2_實作篇I_單一樣本標準流程_投影片_ZH.pdf)&nbsp;｜&nbsp;[EN](slides/Q2_Single_Sample_Pipeline_EN.pdf) | [00–03](R/) |
 | Q3 | 實作篇 II：多樣本整合與下游分析 | [中文](slides/Q3_實作篇II_多樣本分析_投影片_ZH.pdf)&nbsp;｜&nbsp;[EN](slides/Q3_Multi_Sample_Analysis_EN.pdf) | [04–10](R/) |
 
-影片連結：錄製中，上線後補。三份投影片共 201 頁，**中英雙語各一套**（PDF）。
+影片連結：錄製中，上線後補。三集投影片共 228 頁，**中英雙語各一套**（PDF）。
 
 **九句話骨架**——整門課要帶走的東西：
 
@@ -32,20 +32,21 @@
 | 看懂單細胞論文、跟生資合作者對話 | Q1 | — | 30 分 |
 | 自己分析一份樣本（QC → 分群 → 註釋） | Q1 + Q2 | 腳本 00–03 | 1.5 小時 + 半天 |
 | 多樣本比較、判定惡性、下游分析與發表 | Q1–Q3 | 腳本 00–10 | 2.5 小時 + 兩天 |
+| 把學到的東西練成一份研究 | Q1–Q3 | 腳本 00–10 + [`exercises/`](exercises/) | 半天～三天／題 |
 
 前置需求：會開 RStudio、跑過幾行 R。不需要單細胞經驗。
 
 ## 各集內容
 
-### Q1 · 觀念篇（44 頁，無腳本）
+### Q1 · 觀念篇（47 頁，無腳本）
 
 從一位 58 歲 GBM 病人的切片出發，建立三個心智模型：腫瘤（組織）是什麼、資料從哪裡來、分析流程在做什麼。內容包括：Bulk 定序看到什麼、漏掉什麼；從組織到矩陣（解離、四種平台、GEM、barcode/UMI、稀疏與兩種零、實驗設計三個數字）；九步流程各在做什麼、PC 空間與 UMAP 的關係；腫瘤資料的兩個特有現象（惡性細胞按病人分群、惡性與否需要基因體層級的證據）；怎麼讀圖與讀論文（UMAP 能說與不能說的、dotplot、FeaturePlot、四種常見誤讀、讀論文五問）；三個常見錯誤與三句總結。
 
-### Q2 · 實作篇 I：單一樣本標準流程——從原始矩陣到細胞註釋（69 頁，腳本 00–03）
+### Q2 · 實作篇 I：單一樣本標準流程——從原始矩陣到細胞註釋（80 頁，腳本 00–03）
 
-資料：10x 官方 GBM 5k（一位病人，Chromium 3' v3，5,604 顆細胞）。從讀檔做到「每群有名字、惡性細胞有狀態分數」，每個參數答得出為什麼。內容包括：環境安裝與資料初探（含環境 RNA 與 SoupX）；QC 三指標與 MAD 動態閾值、scDblFinder 抓 doublet；前處理四行與細胞週期分數、LogNormalize vs SCT、nPC 怎麼選；分群解析度掃描與 clustree、群穩定性三檢查；細胞註釋的完整工作流（門牌基因、marker 面板、FindAllMarkers、SingleR、層級式註釋與亞群重跑、免疫亞群面板、Neftel 四狀態三種打分數算法、三層命名規範、常見誤註釋）；方法段模板與交付清單。
+資料：10x 官方 GBM 5k（一位病人，Chromium 3' v3，5,604 顆細胞）。從讀檔做到「每群有名字、惡性細胞有狀態分數」，每個參數答得出為什麼。內容包括：環境安裝與資料初探（含環境 RNA 與 SoupX）；QC 三指標與 MAD 動態閾值、DoubletFinder 抓 doublet（並與 scDblFinder 對照）；前處理四行與細胞週期分數、LogNormalize vs SCT、nPC 怎麼選；分群解析度掃描與 clustree、群穩定性三檢查；細胞註釋的完整工作流（門牌基因、marker 面板、FindAllMarkers、SingleR、層級式註釋與亞群重跑、免疫亞群面板、Neftel 四狀態三種打分數算法、三層命名規範、常見誤註釋）；方法段模板與交付清單。
 
-### Q3 · 實作篇 II：多樣本整合與下游分析（88 頁，腳本 04–10）
+### Q3 · 實作篇 II：多樣本整合與下游分析（101 頁，腳本 04–10）
 
 資料：GSE84465（Darmanis et al. 2017；4 位 GBM 病人 × 腫瘤核心/浸潤邊緣，Smart-seq2，3,589 顆，含作者的細胞型別標籤——可以「對答案」）＋ TCGA-GBM Bulk。內容包括：多病人整合的兩難與方法地圖（Seurat CCA 為預設、Harmony 作比較、正負對照與 LISI）；inferCNV 判定惡性（CNV 分數與相關、四象限、三角驗證、與作者標籤對答案）；組成分析（propeller）；差異表達正確做法（pseudoreplication 為什麼錯、每型別各自 pseudobulk + 配對 DESeq2、三種 log2FC 的用途、火山圖讀法、不能 pseudobulk 時的 cell-level 備案與三道防線）；富集分析（ORA vs GSEA、Hallmark/GO/KEGG、NES 熱圖與 dotplot 讀法、五個常見錯）；細胞通訊（CellChat 六種圖的畫法與讀法、兩條件比較、LIANA 交叉驗證）；軌跡分析（Slingshot + tradeSeq、Monocle3/Monocle2 比較、手動選起點）；路徑與 TF 活性（decoupleR/PROGENy、SCENIC）；反卷積與存活分析（MuSiC + TCGA、KM/Cox）。
 
@@ -59,17 +60,17 @@
 | 腳本 | 做什麼 | 投影片&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | 運行時間&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |
 |---|---|---|---|
 | [`00_setup.R`](R/00_setup.R) | 裝套件（CRAN + Bioconductor + GitHub）、下載兩份資料與基因座標檔、建資料夾 | Q2<br>P7–8 | 10–20&nbsp;分 |
-| [`01_qc.R`](R/01_qc.R) | （選做 SoupX）→ Read10X → 初探 → QC 三指標 → MAD 三條線 → scDblFinder | Q2<br>P8–22 | 3–5&nbsp;分 |
+| [`01_qc.R`](R/01_qc.R) | （選做 SoupX）→ Read10X → 初探 → QC 三指標 → MAD 三條線 → DoubletFinder | Q2<br>P8–22 | 3–5&nbsp;分 |
 | [`02_cluster.R`](R/02_cluster.R) | 前處理四行 + 週期分數 → PC1 檢查 → nPC → 解析度掃描 + clustree → 穩定性三檢查 | Q2<br>P25–36 | 3–5&nbsp;分 |
-| [`03_annotate.R`](R/03_annotate.R) | 門牌基因 → marker 面板 → FindAllMarkers → SingleR → 掛名字 → 免疫亞群重跑 → Neftel 分數 → 品質檢查 → 交付 | Q2<br>P38–59 | 10–15&nbsp;分 |
+| [`03_annotate.R`](R/03_annotate.R) | 門牌基因 → marker 面板 → FindAllMarkers → SingleR → 掛名字 → 免疫亞群重跑 → Neftel 分數 → 品質檢查 → 交付 | Q2<br>P38–64 | 10–15&nbsp;分 |
 | [`04_multipatient.R`](R/04_multipatient.R) | 載入 GSE84465 counts + metadata → 未整合基線 → Seurat CCA（預設）+ Harmony（比較）→ 正負對照 → LISI | Q3<br>P8–17 | 5–10&nbsp;分 |
-| [`05_infercnv.R`](R/05_infercnv.R) | inferCNV（參考 = 免疫 + 寡樹突）→ CNV 分數與相關 → 三角驗證 → 與作者標籤對答案 | Q3<br>P20–26 | 10–30&nbsp;分 |
-| [`06a_pseudobulk_gsea.R`](R/06a_pseudobulk_gsea.R) | propeller 組成 → 每型別 pseudobulk + 配對 DESeq2（ashr 收縮）→ 火山圖 → GSEA（Hallmark/GO/KEGG）+ ORA → NES 熱圖 | Q3<br>P29–47 | 5–10&nbsp;分 |
-| [`06b_cell_level_de.R`](R/06b_cell_level_de.R) | 不能 pseudobulk 時的備案：Wilcoxon 基準 → MAST + 病人共變量 → 逐病人一致性 → 標籤置換 → 標註限制交付 | Q3<br>P48–49 | 3–5&nbsp;分 |
-| [`07_cellchat.R`](R/07_cellchat.R) | 每樣本各跑 CellChat → 六種圖 → mergeCellChat 兩條件比較 → LIANA 共識交叉驗證 | Q3<br>P54–65 | 每樣本&nbsp;5–15&nbsp;分 |
-| [`08_trajectory.R`](R/08_trajectory.R) | 單一病人惡性細胞的軌跡：Slingshot → tradeSeq → Monocle3/Monocle2 比較（含手動選起點）→ 穩健性 | Q3<br>P66–69 | 5–10&nbsp;分 |
-| [`09_activity.R`](R/09_activity.R) | decoupleR/PROGENy 路徑活性 → 以病人為單位的配對比較 → SCENIC（選配） | Q3<br>P70–72 | 2&nbsp;分 |
-| [`10_deconv_survival.R`](R/10_deconv_survival.R) | MuSiC 以單細胞為參考反卷積 TCGA-GBM → KM / Cox 存活分析 | Q3<br>P73–75 | 15&nbsp;分（含下載） |
+| [`05_infercnv.R`](R/05_infercnv.R) | inferCNV（參考 = 免疫 + 寡樹突）→ CNV 分數與相關 → 三角驗證 → 與作者標籤對答案 | Q3<br>P21–28 | 10–30&nbsp;分 |
+| [`06a_pseudobulk_gsea.R`](R/06a_pseudobulk_gsea.R) | propeller 組成 → 每型別 pseudobulk + 配對 DESeq2（ashr 收縮）→ 火山圖 → GSEA（Hallmark/GO/KEGG）+ ORA → NES 熱圖 | Q3<br>P29–51 | 5–10&nbsp;分 |
+| [`06b_cell_level_de.R`](R/06b_cell_level_de.R) | 不能 pseudobulk 時的備案：Wilcoxon 基準 → MAST + 病人共變量 → 逐病人一致性 → 標籤置換 → 標註限制交付 | Q3<br>P53–54 | 3–5&nbsp;分 |
+| [`07_cellchat.R`](R/07_cellchat.R) | 每樣本各跑 CellChat → 六種圖 → mergeCellChat 兩條件比較 → LIANA 共識交叉驗證 | Q3<br>P58–71 | 每樣本&nbsp;5–15&nbsp;分 |
+| [`08_trajectory.R`](R/08_trajectory.R) | 單一病人惡性細胞的軌跡：Slingshot → tradeSeq → Monocle3/Monocle2 比較（含手動選起點）→ 穩健性 | Q3<br>P72–75 | 5–10&nbsp;分 |
+| [`09_activity.R`](R/09_activity.R) | decoupleR/PROGENy 路徑活性 → 以病人為單位的配對比較 → SCENIC（選配） | Q3<br>P76–78 | 2&nbsp;分 |
+| [`10_deconv_survival.R`](R/10_deconv_survival.R) | MuSiC 以單細胞為參考反卷積 TCGA-GBM → KM / Cox 存活分析 | Q3<br>P79–82 | 15&nbsp;分（含下載） |
 
 使用說明、作業格式與**常見錯誤對照表**見 [`R/練習手冊.md`](R/練習手冊.md)。
 
@@ -96,7 +97,20 @@
 
 ## 自測題庫
 
-27 題單選（Q1 7 題、Q2 9 題、Q3 11 題），中英對照，含影片內自測題與常見錯誤、腳本練習的延伸題。互動題庫在 [`quiz/`](quiz/)：把資料夾下載到電腦後，點擊 `index.html` 即可開啟作答——即點即答、附解析、可切換中英文。
+33 題單選（Q1 7 題、Q2 12 題、Q3 14 題），中英對照，含影片內自測題與常見錯誤、腳本練習的延伸題。互動題庫在 [`quiz/`](quiz/)：把資料夾下載到電腦後，點擊 `index.html` 即可開啟作答——即點即答、附解析、可切換中英文。
+
+## 實作練習題（exercises/）
+
+課程之外的動手關卡，共 23 題，全部放在 [`exercises/`](exercises/)：
+
+- **基礎 9 題**——把課程裡的某一段流程換一份資料獨立走完，半天到一天一題。
+- **進階 14 題**——多病人、多樣本的真實公開資料，從讀檔到臨床驗證走完整條線，1.5–3 個工作天一題；
+  每一題都要走完「階段 D」：pseudobulk 差異表達 → cell-level DE 對照 → GSEA → CellChat →
+  軌跡 → PROGENy/SCENIC 活性 → 反卷積與存活驗證，把課程教過的下游分析全部用上。
+
+**練習題用的 23 個公開資料集，沒有一個是課程示範用的那兩份**——重跑一次示範學不到東西。
+每張題卡都標明對應課程的哪一段與哪一支腳本；資料集的 accession、規模、格式與下載連結整理在
+[`exercises/資料集總覽.md`](exercises/資料集總覽.md)。
 
 ## 延伸課程
 
@@ -116,20 +130,23 @@ scRNA-seq-tutorial-Qseries/
 ├── docx/                    # 課程總索引
 ├── R/                       # 十二支練習腳本（完整版）+ 練習手冊
 │   └── 練習版/              # 關鍵參數挖空版（## TODO ▶ 提示）
+├── exercises/               # 課後實作練習題 23 題（基礎 9、進階 14）
+│   ├── 基礎/                # 換一份資料把課程流程走完
+│   └── 進階/                # 發表導向的完整再分析專案
 └── quiz/                    # 互動自測題庫（index.html + 題目資料）
 ```
 
 ## 授權
 
 - **程式碼**（`R/`、`quiz/`）：[MIT License](LICENSE)——可自由使用、修改、再散布。
-- **教材**（`slides/` 的投影片與 `docx/` 的總索引，及其中的圖表文字）：[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/deed.zh-hant)——註明出處、非商業使用；商業授權請聯絡作者。
+- **教材**（`slides/` 的投影片、`docx/` 的總索引與 `exercises/` 的題卡，及其中的圖表文字）：[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/deed.zh-hant)——註明出處、非商業使用；商業授權請聯絡作者。
 
 ## 資料與工具引用
 
 使用本課程材料發表時，請引用對應的原始資料與工具：
 
 - **資料**：Darmanis et al. (2017) *Cell Reports*（GSE84465）；10x Genomics 公開資料集；TCGA Research Network。
-- **主要工具**：Seurat v5（Hao et al. 2024）、Harmony（Korsunsky et al. 2019）、inferCNV（Broad Institute）、scDblFinder、SoupX、SingleR、DESeq2（Love et al. 2014）、ashr、edgeR/limma 生態的 propeller/speckle、fgsea、msigdbr、clusterProfiler（Wu et al. 2021）、MAST、CellChat v2（Jin et al. 2021）、LIANA、Slingshot（Street et al. 2018）、tradeSeq、Monocle 2/3（Trapnell/Qiu/Cao et al.）、decoupleR、PROGENy、SCENIC、MuSiC（Wang et al. 2019）、TCGAbiolinks。
+- **主要工具**：Seurat v5（Hao et al. 2024）、Harmony（Korsunsky et al. 2019）、inferCNV（Broad Institute）、DoubletFinder（McGinnis et al. 2019）、scDblFinder、SoupX、SingleR、DESeq2（Love et al. 2014）、ashr、edgeR/limma 生態的 propeller/speckle、fgsea、msigdbr、clusterProfiler（Wu et al. 2021）、MAST、CellChat v2（Jin et al. 2021）、LIANA、Slingshot（Street et al. 2018）、tradeSeq、Monocle 2/3（Trapnell/Qiu/Cao et al.）、decoupleR、PROGENy、SCENIC、MuSiC（Wang et al. 2019）、TCGAbiolinks。
 - **判定與狀態框架**：Tirosh et al. (2016)（CNV 相關法）、Neftel et al. (2019)（GBM 四狀態）。
 
 ---
