@@ -13,7 +13,7 @@ pbmc3k 是單細胞界的「Hello World」——Seurat 官方教學用的就是�
 ## 資料集
 
 - **10x pbmc3k**（10x 3' v1 平台），2,700 cells，Seurat 官方教學同款。
-- 下載：Seurat pbmc3k 教學頁面載明的 cf.10xgenomics.com 直鏈（免註冊），MEX 三件套解壓後 `Read10X()` 直讀。**規則**：教學頁只准抓下載連結，抓完立刻關掉——階段 B 之前不准往下捲。
+- 下載：[pbmc3k_filtered_gene_bc_matrices.tar.gz](https://cf.10xgenomics.com/samples/cell/pbmc3k/pbmc3k_filtered_gene_bc_matrices.tar.gz)（Seurat 官方教學載明的直鏈，免註冊），MEX 三件套解壓後 `Read10X()` 直讀。**規則**：教學頁只准抓下載連結，抓完立刻關掉——階段 B 之前不准往下捲。
 - 格式注意：這是 v1 化學的老資料，測序深度與基因數的分布跟你在基礎01 看的 v3.1 不同——QC 閾值照舊要看這份資料自己的分布訂，別把基礎01 的數字搬過來。
 
 ## 任務

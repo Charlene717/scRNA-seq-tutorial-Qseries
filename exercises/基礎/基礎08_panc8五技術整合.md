@@ -12,7 +12,7 @@ panc8 是整合方法論文最愛用的展示資料：八個人類胰臟資料�
 
 ## 資料集
 
-- **SeuratData `panc8`**：14,892 cells，8 個資料集、5 種技術（Smart-seq2、Fluidigm C1、CEL-seq、CEL-seq2、inDrops）。
+- **[SeuratData](https://github.com/satijalab/seurat-data) `panc8`**：14,892 cells，8 個資料集、5 種技術（Smart-seq2、Fluidigm C1、CEL-seq、CEL-seq2、inDrops）。
 - 下載：R 內 `install.packages("SeuratData", repos="https://seurat.nygenome.org")` 後 `InstallData("panc8")`、`LoadData("panc8")`。
 - 格式注意：技術別、資料集別與作者的型別註解都在 metadata，欄名以 `colnames(obj[[]])` 實際確認為準；作者註解欄留到對答案用。Smart-seq2 與 Fluidigm C1 是無 UMI 的全長技術，counts 尺度與液滴技術不同（尺度不同這件事，整合時要特別留意）。
 

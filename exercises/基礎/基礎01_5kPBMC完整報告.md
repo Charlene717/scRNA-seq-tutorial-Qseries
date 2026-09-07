@@ -13,7 +13,7 @@ PBMC（周邊血單核細胞）是單細胞領域的「模式資料」：細胞�
 ## 資料集
 
 - **10x 5k Human PBMCs（3' v3.1）**，~5,000 cells，健康捐贈者周邊血。
-- 下載：到 `https://www.10xgenomics.com/datasets` 搜尋「5k Peripheral blood mononuclear cells」，填 email（免費）後下載 **Filtered feature-barcode matrix**（HDF5 或 tar.gz 皆可）。
+- 下載：[10x Datasets：5k Human PBMCs, 3' v3.1, Chromium Controller](https://www.10xgenomics.com/datasets/5k-human-pbmcs-3-v3-1-chromium-controller-3-1-standard)，填 email（免費）後下載 **Filtered feature-barcode matrix**（HDF5 或 tar.gz 皆可）。
 - 注意：抓 *filtered* 不是 *raw*——raw 矩陣含大量空液滴，是 Q2・QC 之前的世界。h5 用 `Read10X_h5()`，tar.gz 解開後用 `Read10X()`。
 
 ## 任務

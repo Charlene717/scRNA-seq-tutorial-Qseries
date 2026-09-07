@@ -13,7 +13,7 @@
 ## 資料集
 
 - **10x 10k PBMCs from a Healthy Donor (v3 chemistry)**，11,769 cells detected（目標 10k）。
-- 下載：`https://www.10xgenomics.com/datasets` 搜尋「10k PBMCs from a Healthy Donor (v3 chemistry)」，填 email 後**同時下載 filtered 與 raw 的 h5**（filtered/raw feature-barcode matrix）——raw 這次不是「Q2・QC 之前的世界」，它是估 ambient RNA 的原料。
+- 下載：[10x Datasets：10k PBMCs from a Healthy Donor (v3 chemistry)](https://www.10xgenomics.com/datasets/10-k-pbm-cs-from-a-healthy-donor-v-3-chemistry-3-standard-3-0-0)，填 email 後**同時下載 filtered 與 raw 的 h5**（filtered/raw feature-barcode matrix）——raw 這次不是「Q2・QC 之前的世界」，它是估 ambient RNA 的原料。
 - 格式注意：兩個 h5 都用 `Read10X_h5()` 讀；raw 含幾十萬個空液滴 barcode，屬正常，別對它做 QC。
 
 ## 任務

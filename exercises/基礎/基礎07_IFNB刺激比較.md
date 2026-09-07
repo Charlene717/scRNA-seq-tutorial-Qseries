@@ -12,7 +12,7 @@ Kang 等人（2018）把 8 位狼瘡病人的 PBMC 分成兩半：一半不處�
 
 ## 資料集
 
-- **GSE96583**（Kang）；本題直接用 SeuratData 的 **`ifnb`** 物件：13,999 cells，8 位病人的 ctrl + IFN-β 兩條件（10x 平台，demuxlet 多工分樣）。
+- **[GSE96583](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE96583)**（Kang）；本題直接用 [SeuratData](https://github.com/satijalab/seurat-data) 的 **`ifnb`** 物件：13,999 cells，8 位病人的 ctrl + IFN-β 兩條件（10x 平台，demuxlet 多工分樣）。
 - 下載：R 內 `install.packages("SeuratData", repos="https://seurat.nygenome.org")` 後 `InstallData("ifnb")`、`LoadData("ifnb")`。
 - 注意：(1) 物件的 `stim` 欄是條件；病人編號在 metadata（不同版本欄名可能是 `donor`/`ind` 之類，先 `colnames(obj[[]])` 確認）——pseudobulk 沒有它就做不成。(2) 物件是未處理的 counts，QC 與標準流程照常要走。
 
