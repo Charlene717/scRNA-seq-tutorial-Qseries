@@ -128,6 +128,26 @@
 
 每份都分「精選」（日常分析從這裡選就夠）與「延伸」（什麼情況值得跳出精選），開頭有一段可點的「怎麼挑」把你導到合適的資源，後面附「做到哪一段該翻哪幾個資源」的對應表。
 
+## 互動式教學網站
+
+趕時間的人特別適合先玩過再看影片：概念頁上把參數拉一遍，比讀兩頁投影片快。三個網站都是**中英雙語、免安裝、手機也開得起來**：
+
+| 網站 | 內容 |
+|---|---|
+| [單細胞 RNA-seq 互動教學](https://charlene717.github.io/scrna-interactive-tutorial/) | 分析流程十二章，每章都有互動模擬、R 與 Python 兩版程式碼、文獻頁與自測題 |
+| [scRNA-seq 進階數學](https://charlene717.github.io/scrna-advanced-math/) | M1–M6 六個模組、六十多個互動示範（含 3D PCA），把降維、分群與統計推論的數學畫出來 |
+| [生資互動式教學入口](https://charlene717.github.io/bioinfo-interactive-tutorial-portal/) | 整個生資教學模組的地圖：Git、Linux、R、生物統計、生資概論、單細胞、空間轉錄體、AI 代理人…… |
+
+**互動頁 ↔ 本課程對照**
+
+| 這一集 | 對應的互動頁 |
+|---|---|
+| **Q1** 觀念篇 | 先把[互動教學](https://charlene717.github.io/scrna-interactive-tutorial/)的十二章目錄掃一遍，建立流程的整體感 |
+| **Q2** 單一樣本標準流程<br>（腳本 00–03） | [`qc`](https://charlene717.github.io/scrna-interactive-tutorial/qc.html)、[`normalization`](https://charlene717.github.io/scrna-interactive-tutorial/normalization.html)、[`variable-features`](https://charlene717.github.io/scrna-interactive-tutorial/variable-features.html)、[`scaling`](https://charlene717.github.io/scrna-interactive-tutorial/scaling.html)、[`pca`](https://charlene717.github.io/scrna-interactive-tutorial/pca.html)、[`clustering`](https://charlene717.github.io/scrna-interactive-tutorial/clustering.html)、[`umap`](https://charlene717.github.io/scrna-interactive-tutorial/umap.html)、[`annotation`](https://charlene717.github.io/scrna-interactive-tutorial/annotation.html) |
+| **Q3** 多樣本整合與下游<br>（腳本 04–10） | [`integration`](https://charlene717.github.io/scrna-interactive-tutorial/integration.html)、[`differential-expression`](https://charlene717.github.io/scrna-interactive-tutorial/differential-expression.html)、[`cellchat`](https://charlene717.github.io/scrna-interactive-tutorial/cellchat.html)、[`trajectory`](https://charlene717.github.io/scrna-interactive-tutorial/trajectory.html) |
+
+互動教學走的是通用流程，本課程腫瘤特有的部分（inferCNV 判定惡性、惡性細胞按病人分群、CNV 三角驗證、以病人為統計單位的 pseudobulk）網站上沒有，看影片與腳本。想知道每一步的數學怎麼推的，[進階數學網站](https://charlene717.github.io/scrna-advanced-math/)的 M3 降維、M5 統計推論、M6 整合與軌跡最對得上這門課。
+
 ## 系列導覽
 
 這是四個並行的 scRNA-seq 課程系列，可以各自獨立看，也可以互相補位。本課程是快速上手篇；另外三個系列的投影片、腳本與題庫都已經上線（影片陸續補上）：
