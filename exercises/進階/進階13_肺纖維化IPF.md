@@ -12,7 +12,7 @@
 
 ## 資料集
 
-- **GSE136831**（HiSeq 4000；312,928 cells；32 IPF + 28 對照 + 18 COPD）
+- **[GSE136831](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE136831)**（HiSeq 4000；312,928 cells；32 IPF + 28 對照 + 18 COPD）
 - 格式：**整合 sparse mtx（壓縮 2 GB）+ 細胞註解**；RAW 另有 per-sample RDS。磁碟預留 15–20 GB。
 - 本題**務必取子集**：每組 8–10 位。全量 31 萬細胞不是目標，三組比較的設計才是。
 

@@ -12,8 +12,8 @@ Puram 等人（2017）的頭頸鱗癌圖譜有一個教科書級的發現：部�
 
 ## 資料集
 
-- **GSE103322**（Smart-seq2，5,902 cells／18 位口腔癌病人）
-- **兩條讀入路線，都要知道**：(a) GEO Supplementary files 的矩陣 txt——格式與進階01 的 GSE72056 同族，**表頭附近有非表達的註解列，確切結構以 GEO 頁為準**；(b) Bioconductor 有現成 `GSE103322` 套件（ExperimentHub 體系）可直接載成物件。本題主線走 (a)，用 (b) 對答案——取捨討論見真實數據關卡。
+- **[GSE103322](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE103322)**（Smart-seq2，5,902 cells／18 位口腔癌病人）
+- **兩條讀入路線，都要知道**：(a) GEO Supplementary files 的矩陣 txt——格式與進階01 的 [GSE72056](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE72056) 同族，**表頭附近有非表達的註解列，確切結構以 GEO 頁為準**；(b) Bioconductor 有現成 `GSE103322` 套件（ExperimentHub 體系）可直接載成物件。本題主線走 (a)，用 (b) 對答案——取捨討論見真實數據關卡。
 - Smart-seq2、TPM 家族尺度（確切轉換以 GEO 頁與原論文 Methods 為準）：QC 與正規化決策不能照抄 10x 流程，沒有 UMI、基因偵測數的意義也不同。
 
 ## 真實數據關卡

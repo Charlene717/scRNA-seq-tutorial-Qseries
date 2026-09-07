@@ -12,7 +12,7 @@ van Galen 等人（2019）用 Seq-Well 定序了 16 位 AML 病人（多個治�
 
 ## 資料集
 
-- **GSE116256**（Seq-Well，~38,410 cells；16 AML 病人（多時點）+ 5 健康）
+- **[GSE116256](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE116256)**（Seq-Well，~38,410 cells；16 AML 病人（多時點）+ 5 健康）
 - 格式：**per-sample 的 `dem.txt`（count matrix）+ `anno.txt`（細胞 metadata）**，一個樣本兩個檔，GEO Supplementary files 逐一下載。
 - 本題**可先取子集**：5 位健康 + 4–6 位病人的 **diagnosis（Day 0）時點**。全量多時點不是本題目標，先把「正常 vs 偏離」做扎實。
 

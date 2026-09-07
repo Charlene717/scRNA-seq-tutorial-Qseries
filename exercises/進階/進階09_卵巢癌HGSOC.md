@@ -12,7 +12,7 @@
 
 ## 資料集
 
-- **GSE184880**（10x，NovaSeq 定序，59,324 cells；7 位未治療 HGSOC + 5 正常卵巢）
+- **[GSE184880](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE184880)**（10x，NovaSeq 定序，59,324 cells；7 位未治療 HGSOC + 5 正常卵巢）
 - 下載：GEO Supplementary files。**per-sample MTX + TSV 三件套，非標準檔名**——每個檔帶 GSM 與樣本前綴（如 `GSMxxxxxxx_樣本名.matrix.mtx.gz` 式），`Read10X` 要求資料夾內是 `matrix.mtx.gz`/`barcodes.tsv.gz`/`features.tsv.gz`（或 `genes.tsv.gz`）的標準名——需改名並按樣本分資料夾，見真實數據關卡。
 - 臨床分期等樣本層級細節以 GEO 頁為準（每個 GSM 的描述欄），自己整理成樣本表。
 
