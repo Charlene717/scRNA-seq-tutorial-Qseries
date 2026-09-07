@@ -1,6 +1,6 @@
 # scRNA-seq Q 系列 · 快速上手篇
 
-> 三集課程、約 2.5 小時、十二支可實跑的 R 腳本，外加 23 題課後實作練習——從「單細胞 RNA 定序在看什麼」到多樣本整合、惡性細胞判定、差異表達與下游分析，完成一份完整的 scRNA-seq 分析。
+> 三集課程、十二支可實跑的 R 腳本，外加 23 題課後實作練習——從「單細胞 RNA 定序在看什麼」到多樣本整合、惡性細胞判定、差異表達與下游分析，完成一份完整的 scRNA-seq 分析。
 
 ![code: MIT](https://img.shields.io/badge/code-MIT-blue.svg)
 ![content: CC BY--NC 4.0](https://img.shields.io/badge/content-CC%20BY--NC%204.0-lightgrey.svg)
@@ -11,13 +11,13 @@
 
 ## 課程一覽
 
-| # | 標題 | 投影片 | 練習腳本 |
-|---|---|---|---|
-| Q1 | 觀念篇：單細胞 RNA 定序在看什麼、怎麼運作、怎麼讀圖 | [中文](slides/Q1_觀念篇_投影片_ZH.pdf)&nbsp;｜&nbsp;[EN](slides/Q1_Concepts_EN.pdf) | — |
-| Q2 | 實作篇 I：單一樣本標準流程——從原始矩陣到細胞註釋 | [中文](slides/Q2_實作篇I_單一樣本標準流程_投影片_ZH.pdf)&nbsp;｜&nbsp;[EN](slides/Q2_Single_Sample_Pipeline_EN.pdf) | [00–03](R/) |
-| Q3 | 實作篇 II：多樣本整合與下游分析 | [中文](slides/Q3_實作篇II_多樣本分析_投影片_ZH.pdf)&nbsp;｜&nbsp;[EN](slides/Q3_Multi_Sample_Analysis_EN.pdf) | [04–10](R/) |
+| # | 標題 | 影片 | 投影片 | 練習腳本 |
+|---|---|---|---|---|
+| Q1 | 觀念篇：單細胞 RNA 定序在看什麼、怎麼運作、怎麼讀圖 | [中文](https://www.youtube.com/watch?v=cwqr321BWD8)&nbsp;｜&nbsp;[EN](https://www.youtube.com/watch?v=nL1xr9VC-GE) | [中文](slides/Q1_觀念篇_投影片_ZH.pdf)&nbsp;｜&nbsp;[EN](slides/Q1_Concepts_EN.pdf) | — |
+| Q2 | 實作篇 I：單一樣本標準流程——從原始矩陣到細胞註釋 | [中文](https://www.youtube.com/watch?v=jJxax_O4T84)&nbsp;｜&nbsp;[EN](https://www.youtube.com/playlist?list=PLPOrmauMaHfI) | [中文](slides/Q2_實作篇I_單一樣本標準流程_投影片_ZH.pdf)&nbsp;｜&nbsp;[EN](slides/Q2_Single_Sample_Pipeline_EN.pdf) | [00–03](R/) |
+| Q3 | 實作篇 II：多樣本整合與下游分析 | [中文](https://www.youtube.com/watch?v=J--O9XfwXWs)&nbsp;｜&nbsp;[EN](https://www.youtube.com/watch?v=vpb3X4EXKGE) | [中文](slides/Q3_實作篇II_多樣本分析_投影片_ZH.pdf)&nbsp;｜&nbsp;[EN](slides/Q3_Multi_Sample_Analysis_EN.pdf) | [04–10](R/) |
 
-影片連結：錄製中，上線後補。三集投影片共 228 頁，**中英雙語各一套**（PDF）。
+完整播放清單：[中文版](https://www.youtube.com/playlist?list=PLUawCdwA3m8s) ｜ [English](https://www.youtube.com/playlist?list=PLPOrmauMaHfI)。三集投影片共 228 頁，**中英雙語各一套**（PDF）。
 
 **九句話骨架**——整門課要帶走的東西：
 
