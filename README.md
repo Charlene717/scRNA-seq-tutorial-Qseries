@@ -127,7 +127,6 @@ scRNA-seq-tutorial-Qseries/
 ├── README.md
 ├── LICENSE                  # 程式碼：MIT
 ├── slides/                  # 投影片 PDF，中英各三份
-├── docx/                    # 課程總索引
 ├── R/                       # 十二支練習腳本（完整版）+ 練習手冊
 │   └── 練習版/              # 關鍵參數挖空版（## TODO ▶ 提示）
 ├── exercises/               # 課後實作練習題 23 題（基礎 9、進階 14）
@@ -139,7 +138,7 @@ scRNA-seq-tutorial-Qseries/
 ## 授權
 
 - **程式碼**（`R/`、`quiz/`）：[MIT License](LICENSE)——可自由使用、修改、再散布。
-- **教材**（`slides/` 的投影片、`docx/` 的總索引與 `exercises/` 的題卡，及其中的圖表文字）：[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/deed.zh-hant)——註明出處、非商業使用；商業授權請聯絡作者。
+- **教材**（`slides/` 的投影片與 `exercises/` 的題卡，及其中的圖表文字）：[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/deed.zh-hant)——註明出處、非商業使用；商業授權請聯絡作者。
 
 ## 資料與工具引用
 
