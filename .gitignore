@@ -1,0 +1,24 @@
+# ---- R 執行期產物（跑腳本會生成，不入庫）----
+data/
+output/
+GDCdata/
+*.rds
+*.RData
+.Rhistory
+.Rproj.user/
+*.Rproj
+
+# ---- 系統雜物 ----
+.DS_Store
+Thumbs.db
+~$*
+
+# ---- 若直接在完整製作資料夾初始化（僅上傳教學內容＋腳本時取消註解）----
+# _舊版/
+# 講稿/
+# tools/
+# figures/
+# _setup.sh
+# slides/*.js
+# slides/*.json
+# docx/build_doc.js
