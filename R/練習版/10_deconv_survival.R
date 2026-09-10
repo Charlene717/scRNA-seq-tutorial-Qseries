@@ -41,15 +41,19 @@ if (file.exists("MANIFEST.txt")) {                       # 跨磁碟（專案在
 }
 bulk <- GDCprepare(q, directory = GDC_DIR)                                   # 本例回來 391 個檔案，含臨床欄位
 bulk.mtx <- assay(bulk, "unstranded"); rownames(bulk.mtx) <- rowData(bulk)$gene_name
-# 重複的基因 symbol（多個 Ensembl ID 對到同一個名字）這裡直接留第一個。這是最省事的做法，
-# 但留下哪一個取決於列的順序，等於隨機挑——正式分析要處理得更清楚一點。
+# 重複的基因 symbol：多個 Ensembl 基因（ENSG）對到同一個名字。
+# 最省事的做法是 !duplicated() 留第一個，但列的順序是照 Ensembl ID 排的、跟生物學無關，
+# 等於隨機挑一個留下，也寫不出一條像樣的方法段。下面 §1b 改成三步處理。
 # ⚠ 不要反射性地用 rowsum() 加總。加總對「轉錄本 → 基因」是對的（那些本來就是同一個基因的片段），
 #   但這裡的重複是「不同的基因座剛好共用一個名字」，性質完全不同：
 #     · _PAR_Y：擬體染色體區的基因在 X 與 Y 各註記一次。這確實是同一個基因，加總無妨
 #       （Y 那一份通常是 0，因為讀序都被指派到 X）。
-#     · 不同 Ensembl ID 共用符號：常見的是蛋白編碼基因與它的假基因／lncRNA 撞名。
-#       把兩者加起來，等於把多重比對造成的雜訊灌進那個基因，反卷積的比例會跟著偏。
-#   所以加總會把後面這一類「不同的東西」混成一個，比隨機挑一個更難察覺。
+#     · 其餘的撞名：兩個不同的基因座剛好共用一個 HGNC 符號。這一類**不是**同一個基因，
+#       加起來就是把兩個不同的東西混成一個，而且事後從數字上看不出來。
+#   注意這裡的矩陣已經是**基因層級**（一列 = 一個 ENSG），轉錄本早在上游就併進母基因了，
+#   所以撞名跟 isoform 無關——這也是為什麼「加總」在這一層不適用。
+#   至於這份檔案裡除了 _PAR_Y 之外還有哪些撞名、各是什麼類型，下面 §1b 的第①步會印出來給你看。
+#   （不要憑印象假設，先看過再決定怎麼處理——練習 10-4 就是在練這件事。）
 #
 # 那要怎麼辦？先講一件常被誤導的事：**「全程用 Ensembl ID 就沒事了」並不成立。**
 #   轉換只是被延後，不會消失——只要你要跟「用符號當索引的外部資源」對接，就得轉一次：
@@ -59,22 +63,59 @@ bulk.mtx <- assay(bulk, "unstranded"); rownames(bulk.mtx) <- rowData(bulk)$gene_
 #     · marker 清單、CellChatDB 也都是符號。
 #   真正能控制的不是「要不要轉」，而是**在哪裡轉、轉的時候有沒有看見**。
 #
-# 所以本節的做法是：留在符號空間，但把折疊規則寫清楚，而不是讓 !duplicated() 靠列的順序決定。
-#   建議的折法（先看一眼重複是什麼，再挑「表現量最高」的那一列留下）：
-#     keep <- order(rowSums(bulk.mtx), decreasing = TRUE)
-#     bulk.mtx <- bulk.mtx[keep, ][!duplicated(rownames(bulk.mtx)[keep]), ]
-#   至少不靠列的順序，留下的是主要表現的那個基因座，而且規則寫得進方法段。
+# 所以本節留在符號空間，但把折疊規則寫明，分三步做（下面 §1b）：
+#   ① 先看重複的組成——不知道重複是什麼，就沒有立場決定怎麼處理
+#   ② 用 gene_type 篩到蛋白編碼：撞名多半在這一步就消失，而且判斷依據是「註解」不是「這批資料的數值」
+#   ③ 殘餘的留表現量最高的那一列，並把這是一個「選擇」講清楚
 #
-# 什麼時候「晚一點再轉」才真的有幫助：
-#   當中間的計算步驟不需要外部資源時（正規化、DE、批次校正），用 Ensembl ID 做完再轉，
-#   統計本身就跑在沒有歧義的索引上，折疊只影響最後那一步的標示，看得到也改得動。
-#   另外，有些工具可以反過來把「基因集」換到你的 ID 空間（clusterProfiler 的 keyType = "ENSEMBL"、
-#   msigdbr 輸出裡的 Ensembl 欄位，欄名隨版本不同，用 names() 確認）。
-#   那個方向通常比較安全：策展好的基因集遇到一名多座，本來就會把幾個座位都列進去，
-#   而把自己的矩陣折疊掉，資訊是真的少了一份。
-# 練習 10-4 會請你實際比較幾種做法對反卷積比例的影響。
-table(dup = duplicated(rownames(bulk.mtx)))              # 先知道有幾個重複，再決定怎麼處理
-bulk.mtx <- bulk.mtx[!duplicated(rownames(bulk.mtx)), ]
+# ⚠ 第③步要保留的疑慮，教的時候要一起講：
+#   · 這是依賴資料的選擇。留哪一列取決於這個 cohort 的表現量，換一批病人可能留到不同的基因座；
+#     要把兩個 cohort 併起來時，同一個符號兩邊可能不是同一個東西。
+#   · 如果殘餘的重複是「兩個真的不同的基因座剛好共用一個名字」，留一個等於把另一個
+#     默默從分析裡刪掉。挑豐度高的是一個決定，不是一個事實。
+#   · 更保守的做法是把這些語意不明的符號整個排除（反卷積用幾千個基因，少一小撮不痛不癢，
+#     而默默留錯一個事後看不出來）。本課選擇保留、但要求你把數量與規則寫進方法段——
+#     練習 10-4 會請你兩種都跑一次，看反卷積比例差多少。
+#
+## ---- 1b. 重複基因符號的三步處理 --------------------------------------
+rd <- rowData(bulk)      # 與上面第 39 行同一個來源，列順序仍然一一對應
+cat("\n== 重複的基因符號 ==\n")
+cat("重複列數：", sum(duplicated(rownames(bulk.mtx))), " / 全部 ", nrow(bulk.mtx), "\n", sep = "")
+
+# ① 看組成：這些重複是什麼？（欄位不一定存在，先確認再用，不要假設）
+dup.name <- rownames(bulk.mtx) %in% rownames(bulk.mtx)[duplicated(rownames(bulk.mtx))]
+if ("gene_id" %in% names(rd)) {
+  par.y <- grepl("_PAR_Y$", rd$gene_id)
+  cat("其中 _PAR_Y（擬體染色體區，X 與 Y 各記一次，是同一個基因）：", sum(par.y & dup.name), "\n", sep = "")
+}
+if ("gene_type" %in% names(rd)) {
+  cat("重複列的 gene_type 組成：\n"); print(sort(table(rd$gene_type[dup.name]), decreasing = TRUE))
+} else {
+  cat("（這份 rowData 沒有 gene_type 欄位，跳過第②步的註解篩選）\n")
+}
+
+# ② 用註解拆撞名——只動撞名的那幾列，不要整批篩。
+#    同一個符號底下如果同時有蛋白編碼與非蛋白編碼，非蛋白編碼的那幾列拿掉即可。
+#    這一步不看數值，換一批病人結果一樣——這正是它比「挑表現量高」可靠的地方。
+#    ★ 不要圖方便寫成 bulk.mtx[rd$gene_type == "protein_coding", ]：那會把所有沒撞名的
+#      lncRNA 與假基因也一起刪掉，等於偷偷換掉整個基因池，不再只是「解決撞名」。
+#      （若你確實想只用蛋白編碼做反卷積，那是另一個要獨立說明的決定，不要藏在這一步裡。）
+if ("gene_type" %in% names(rd)) {
+  pc        <- rd$gene_type == "protein_coding"
+  has.pc    <- rownames(bulk.mtx) %in% rownames(bulk.mtx)[dup.name & pc]   # 這個符號有蛋白編碼版本
+  drop.amb  <- dup.name & !pc & has.pc                                     # 撞名、非蛋白編碼、且有蛋白編碼可留
+  cat("依註解拆掉的撞名列（非蛋白編碼、且同名有蛋白編碼版本）：", sum(drop.amb), "\n", sep = "")
+  bulk.mtx <- bulk.mtx[!drop.amb, ]
+  rd       <- rd[!drop.amb, ]
+  cat("剩下的重複：", sum(duplicated(rownames(bulk.mtx))), " 列\n", sep = "")
+}
+
+# ③ 殘餘的：留表現量最高的那一列（不是留第一個——列的順序是照 Ensembl ID 排的，跟生物學無關）
+n.before <- nrow(bulk.mtx)
+ord <- order(rowSums(bulk.mtx), decreasing = TRUE)
+bulk.mtx <- bulk.mtx[ord, ][!duplicated(rownames(bulk.mtx)[ord]), ]
+cat("殘餘重複依表現量折疊：", n.before, " → ", nrow(bulk.mtx), " 列",
+    "（丟掉 ", n.before - nrow(bulk.mtx), " 列，方法段要寫這個數字與規則）\n", sep = "")
 # ★ 統計單位的問題，在這裡換到 Bulk 這一層。TCGA barcode 的第 4 段是樣本型別：
 #   01 = 原發腫瘤、02 = 復發、11 = 癌旁正常組織。三種混在一起做存活分析沒有意義。
 #   而且同一位病人常有兩三份 aliquot（例如 TCGA-06-0743 的 -1849-01 與 -A96S-41 是同一位），
@@ -107,7 +148,15 @@ cat("可分析人數", sum(!is.na(clin$time)), "／ 死亡事件", sum(clin$even
 # 剩下 229 位裡有 227 位是死亡事件（事件率 99%）。KM 曲線因此被系統性拉低。
 # 這是公開資料的常態，不是這支腳本的 bug——但它必須寫進報告的限制，不能默默略過。
 # 要補救就得另外抓臨床追蹤表（GDCquery_clinic 或 clinical supplement）把追蹤時間補回來；
-# 補不回來時，能說的只有組間比較（兩組同樣被削），不能報絕對中位存活。
+# ⚠ 補不回來時，**不能因為「兩組都被削」就推論組間比較不受影響**。
+#   刪除的比例相同，不代表 HR 無偏——關鍵在於刪除的機制取決於「有沒有死」：
+#   那 53 位其實還活著的病人，從來沒有進入他們本該參與的 risk set，
+#   而 Cox 的每一份資訊都來自「某個時點死掉的人 vs 當時仍在 risk set 裡的人」。
+#   KM 與 Cox 都依賴 censoring 與結果無關（non-informative censoring）這個假設，
+#   現在缺失幾乎全部集中在存活者身上，這個假設站不住。
+#   所以絕對存活率、中位存活時間、以及組間的 HR 與 p 值，
+#   在這一版資料上都只能當**探索性示範**，不能當成 population-level 的正式推論。
+#   要變成正式結論，得先從 GDC 的 clinical / follow-up supplement 把 days_to_last_follow_up 補齊。
 clin$imm_hi  <- prop$Immune > median(prop$Immune)      # 二分：畫 KM 用
 clin$imm_pct <- prop$Immune * 100                      # 連續：Cox 用（不用先切成兩組）
 fit <- survfit(Surv(time, event) ~ imm_hi, data = clin)
@@ -119,12 +168,23 @@ print(survdiff(Surv(time, event) ~ imm_hi, data = clin))                    # lo
 print(summary(coxph(Surv(time, event) ~ imm_pct + age_at_index, data = clin)))  # 主要分析：連續
 print(summary(coxph(Surv(time, event) ~ imm_hi  + age_at_index, data = clin)))  # 對照：二分
 # 實際分析還要調整 MGMT 甲基化、IDH 狀態；免疫比例也受腫瘤純度影響，正式報告要做敏感度分析。
+# ⚠ 下面這組實測數字是「留第一個」那一版跑出來的。2026-09-11 改成三步折疊之後，
+#   保留的基因列會變，MuSiC 的比例也會微幅改變——HR 與 p 值待重跑後更新。
+#   病人數（229／227 事件）不受影響，那是樣本層的事。
 # 本例實測：391 個檔案 → 372 份原發 → 去重後 284 位病人 → 229 位可分析（227 個死亡事件）。
-#   免疫總比例（二分）HR 1.10（95% CI 0.85–1.44），log-rank p = 0.5，Cox p = 0.46 → 看不出關聯
+#   免疫總比例（二分）HR 1.10（95% CI 0.85–1.44），log-rank p = 0.5，Cox p = 0.46
+#     → 在 complete-case 子集裡看不出關聯（探索性，理由見上面的 censoring 說明）
 #                     （連續版的 HR 這一版新增，重跑後把數字補進來）
 #   年齡       HR 1.03/歲（1.02–1.04），p = 1.8e-06                       → 陽性對照有出來
-# 陽性對照有出來這件事很重要：它證明臨床欄位、時間軸、模型都接對了，
-# 所以「免疫總比例看不出關聯」是一個可以報的結果，不是「程式壞了」。
+# 陽性對照有出來仍然很重要，但它能說的有限度：
+#   能說 → 已知的年齡效應被偵測到，支持臨床欄位、時間單位、病人對接與模型設定大致合理，
+#          免疫比例的 null 也不是單純因為程式整個失效。
+#   不能說 → 它**無法**排除「存活者追蹤時間大量缺失」造成的 selection bias。
+#          年齡與免疫比例是不同的 predictor，同一個 selection 機制對兩者的影響不必相同；
+#          年齡效應夠強所以還看得到，不代表比較弱的關聯沒有被這個機制吃掉。
+# 所以正確的寫法是：在「取得到存活時間」的 complete-case 子集裡，沒有觀察到免疫比例與存活的明顯關聯；
+#   由於存活者的追蹤時間幾乎全面缺失，此結果僅供探索，不能當成
+#   「TCGA-GBM 中免疫比例與存活無關」的正式證據。
 # 為什麼會是 null？最可能的原因是解析度：這裡的 Immune 把所有免疫細胞併成一格，
 # 而文獻連結到預後的是特定的 TAM 狀態，不是巨噬細胞總量（見練習 10-3）。
 sessionInfo()

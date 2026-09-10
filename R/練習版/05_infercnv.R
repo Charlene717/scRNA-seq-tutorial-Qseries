@@ -214,20 +214,46 @@ gbm4$malignant <- with(gbm4@meta.data, ifelse(
   cnv.score > s.hi & cnv.cor > c.hi, "malignant",
   ifelse(cnv.score <= s.hi & cnv.cor < c.lo, "normal", "unresolved")))
 
-# 第三項證據：譜系。這幾種細胞在 GBM 裡不可能是腫瘤細胞——免疫與血管來自別的胚層，
-# 寡樹突與神經元是終末分化。它們被標成惡性一定是 doublet 或雜訊，一律改 unresolved。
+# 第三項證據：譜系。免疫與血管來自別的胚層、寡樹突與神經元是終末分化，在 GBM 裡被判成惡性
+# 多半是 doublet 或雜訊。所以這裡的處理是「證據互相衝突就不下結論」——改成 unresolved，
+# 而不是直接判成正常。注意用的是「多半」：這是先驗知識很強的一條規則，但仍然是規則，不是事實，
+# 罕見情況（例如真的存在的腫瘤內血管擬態）不該被一條規則永久排除。
 # ★ OPC 與 Astocyte 刻意不放進來：OPC-like / AC-like 正是惡性狀態的名字，
 #   把它們擋掉等於先射箭再畫靶。那兩群本來就該留在 unresolved 讓證據說話。
 lineage.normal <- c("Immune cell", "Vascular", "Oligodendrocyte", "Neuron")
+gbm4$malignant.cnv <- gbm4$malignant      # 先留一份「否決之前」的：下面比對一致性時要用它當非循環的對照
 gbm4$malignant[gbm4$malignant == "malignant" & gbm4$celltype_author %in% lineage.normal] <- "unresolved"
+cat("譜系否決把 ", sum(gbm4$malignant.cnv == "malignant") - sum(gbm4$malignant == "malignant"),
+    " 顆從 malignant 移到 unresolved\n", sep = "")
 
 # 第二項證據：按病人各成一個群集。惡性細胞應集中在 raw_clusters 中「單一病人為主」的群
 tab <- table(gbm4$malignant, gbm4$celltype_author)
 print(tab)
-# 與作者標籤比對。整體一致率會被大量的「正常細胞判對」灌高，所以三個數字要一起看：
-mal  <- gbm4$malignant == "malignant"; neo <- gbm4$celltype_author == "Neoplastic"
-cat(sprintf("整體一致率 %.1f%%｜精確率 %.1f%%（判為惡性的裡面有幾成真的是）｜召回率 %.1f%%（作者的惡性細胞抓回幾成）\n",
-            100 * mean(mal == neo), 100 * sum(mal & neo) / sum(mal), 100 * sum(mal & neo) / sum(neo)))
+
+# ★★ 與作者標籤比對——但這**不是獨立驗證**，原因要講清楚：
+#   celltype_author 在這支腳本裡出現了三次，而且都在「做決定」的那一側：
+#     ① §1a 挑 inferCNV 參考組（refs 就是從 celltype_author 選的）
+#     ② 上面的譜系否決（作者標成 Immune/Vascular/Oligo/Neuron 的一律不准判惡性）
+#     ③ 現在要拿它當標準答案
+#   被拿來幫忙做決策的資訊，又被拿來評分——這叫循環驗證，算出來的「精確率」會被自己灌高。
+#   所以下面一律叫「一致率（concordance）」，不叫 accuracy / precision / recall。
+#   真正的獨立驗證要用沒有參與分類的證據：配對的基因體 CNV、突變、或另一份獨立標註。
+#   為了讓學生看見這件事，這裡同時印兩套：
+#     · 純 CNV 版（沒有經過譜系否決）——比較接近外部比對
+#     · 最終版（CNV + 譜系否決）——課程實際使用的標註
+#   兩者的差距，就是「作者標籤參與分類」替這個數字加了多少分。
+neo      <- gbm4$celltype_author == "Neoplastic"
+mal.fin  <- gbm4$malignant    == "malignant"     # 最終版：已經過譜系否決
+mal.cnv  <- gbm4$malignant.cnv == "malignant"    # 純 CNV 版：否決之前
+conc <- function(m, tag)
+  cat(sprintf("%-12s 整體一致 %.1f%%｜判為惡性中與作者相符 %.1f%%（%d/%d）｜作者惡性被抓回 %.1f%%（%d/%d）\n",
+              tag, 100 * mean(m == neo),
+              100 * sum(m & neo) / sum(m), sum(m & neo), sum(m),
+              100 * sum(m & neo) / sum(neo), sum(m & neo), sum(neo)))
+cat("\n== 與作者標註的一致性（非獨立驗證，見上方說明）==\n")
+conc(mal.cnv, "純 CNV 版")
+conc(mal.fin, "最終版")
+cat("兩者之差＝譜系否決（用了作者標籤）對這個數字的貢獻。\n")
 print(table(gbm4$malignant, gbm4$tissue))
 # 自我檢查：參考組是確定正常的細胞，落進 unresolved 的比例應該接近 c.lo 的分位數（這裡是 10%）。
 #   遠超過的話，代表參考組裡混了不該混的東西（例如把腫瘤旁的反應性細胞也當成正常）。

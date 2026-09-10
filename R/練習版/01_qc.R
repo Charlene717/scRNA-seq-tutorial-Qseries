@@ -133,7 +133,9 @@ ggsave("output/figs/01_doubletfinder_pK.png", p, width = 7, height = 4, dpi = 15
 cat("選到的 pK =", pK.sel, "\n")
 # 看圖：BCmetric 有一個明確的單峰才算掃得乾淨；平坦或多峰代表資料結構弱，pK 的選擇會不穩。
 
-# (b) 期望 doublet 數。10x 經驗法則：每裝載 1,000 顆細胞約 0.8%。
+# (b) 期望 doublet 數。以下是常見的 10x 上樣經驗法則，**不是普遍成立的生物學常數**：
+#     每裝載 1,000 顆細胞約 0.8%。實際的 multiplet 率會隨平台世代、化學版本、
+#     回收細胞數目標與上樣濃度變動，你的實驗條件不同就要換數字。
 dbr      <- 0.008 * ncol(tmp) / 1000                  # 例：5,261 顆 → 約 4.2%
 nExp     <- round(dbr * ncol(tmp))
 homo     <- modelHomotypic(tmp$seurat_clusters)       # 同型別相撞看不出來，要從期望值扣掉
@@ -152,8 +154,13 @@ table(gbm$dbl.class)
 rm(tmp); invisible(gc())
 
 # （選配）第二種方法交叉比對：scDblFinder（Germain et al. 2021, F1000Research）。
-# 原理相近但實作獨立；兩者準確度相當（Xi & Li 2021 的 benchmark 中 DoubletFinder 準確度最高，
-# 但該篇未納入 scDblFinder）。實務上兩法取交集當「高信心 doublet」最穩。
+# 原理相近但實作獨立。兩者都是廣泛使用、且在 benchmark 中表現良好的方法——但要注意引用的邊界：
+# Xi & Li (2021) 的系統性 benchmark 比較九種方法，DoubletFinder 在其中整體表現最好之一；
+# 該篇**當時並未納入 scDblFinder**（是後續的 protocol extension 才加進去，且表現也很好）。
+# 所以不能從那篇推論「兩者準確度相當」——沒有那條證據鏈。能說的是：不同資料集沒有哪一種永遠最好。
+# 本課同時跑兩種，把「兩法都判為 doublet」當成比較保守的高信心子集。
+# ⚠ 取交集不是「最穩」，是一個取捨：它通常提高 specificity（少誤殺），但犧牲 sensitivity（會漏）。
+#   哪一邊的代價比較大，看你接下來要做什麼——見 02 §4c 的下游敏感度表。
 RUN_SCDBL <- TRUE
 if (RUN_SCDBL && requireNamespace("scDblFinder", quietly = TRUE)) {
   set.seed(1234)            # scDblFinder 有隨機性；不固定 seed 的話結果會隨前面消耗掉的亂數而飄
