@@ -30,7 +30,11 @@ for (d in c("output/figs", "output/rds", "output/tables")) dir.create(d, recursi
 
 # 通訊分析用的標籤：CNV 判定後的惡性 + 作者的正常型別；unresolved 排除
 gbm4$cc_label <- ifelse(gbm4$malignant == "malignant", "Malignant",
-                 ifelse(gbm4$celltype_author == "Immune cell", "Macro/MG",   # 本資料免疫細胞以髓系為主
+                 # ⚠ 這是一個假設，不是證據：作者標籤只到 "Immune cell" 這一層。GBM 的免疫浸潤
+                 #   確實以髓系（TAM／microglia）為主，但改名成 Macro/MG 等於替它下了亞型結論。
+                 #   下面 §1 結尾會印 PTPRC / CD68 / CSF1R / CD3E 的陽性率當作檢查；若 T 細胞比例
+                 #   不低，就把標籤改回 Immune，或先做亞群分群再命名。方法段要寫明這個假設。
+                 ifelse(gbm4$celltype_author == "Immune cell", "Macro/MG",
                         gbm4$celltype_author))
 gbm4 <- subset(gbm4, malignant != "unresolved")
 table(gbm4$cc_label, paste(gbm4$patient, gbm4$tissue))                      # 每群 ≥ MIN.CELLS 顆才進得了網路
@@ -44,7 +48,10 @@ run_cc <- function(obj, label = "cc_label") {
   cc <- identifyOverExpressedGenes(cc)
   cc <- identifyOverExpressedInteractions(cc)
   ## TODO ▶ CellChat 用什麼統計量代表一群的表現？（Q3 頁 55–56）
-  cc <- computeCommunProb(cc, type = "____", population.size = TRUE)     # 注意大小寫 triMean；群大小校正
+  # population.size = TRUE 不是「把群大小的影響校正掉」，方向剛好相反：它把族群的相對豐度
+  # 納入通訊機率，所以細胞多的群本來就會拿到比較強的整體訊號。兩個條件組成差很多時，
+  # 這個選項會放大組成差異——練習 7-4 要你各跑一次 TRUE / FALSE 比較。
+  cc <- computeCommunProb(cc, type = "____", population.size = TRUE)     # 注意大小寫 triMean
   cc <- filterCommunication(cc, min.cells = MIN.CELLS)   # 細胞數不足的群會被整組移除，見下面的存活表
   cc <- computeCommunProbPathway(cc)
   cc <- aggregateNet(cc)
@@ -243,6 +250,13 @@ sessionInfo()
 #  7-5 LIANA 的共識前 10 對與 CellChat bubble 的前 10 對重疊幾對？不重疊的原因可能是什麼？
 #      再做一件事：把前 10 對的「配體」一個一個查 UniProt 的 subcellular location，
 #      有幾個真的是分泌型或單次穿膜的表面蛋白？細胞內的蛋白排進前十，代表什麼？
+#  7-7 population.size 各設一次 TRUE / FALSE 重跑同一個樣本：哪些路徑的排名變了？
+#      這個樣本的 Macro/MG 與 Malignant 細胞數差多少？兩個設定的差距跟這個比例有關嗎？
+#      哪一個結果該寫進論文——還是兩個都要報？
+#  7-8 §1 開頭把 Immune cell 改名成 Macro/MG 是一個假設。用 PTPRC / CD68 / CSF1R / CD3E 的
+#      陽性率檢查這個假設：T 細胞佔多少？如果超過兩成，這個改名還站得住嗎？
+#  7-7 population.size 各設一次 TRUE / FALSE 重跑同一個樣本：哪些路徑的排名變了？
+#  7-8 把 Immune cell 改名成 Macro/MG 是一個假設，用 PTPRC / CD68 / CSF1R / CD3E 的陽性率檢查它。
 #  7-6 §1 的存活表：哪些「樣本 × 細胞群」被 MIN.CELLS 擋掉？把 MIN.CELLS 改成 10 重跑 §1–§3，
 #      Macro/MG → Malignant 的並排 bubble 畫得出來了嗎？畫得出來的話，那張圖可以寫進論文嗎？
 #      （提示：13 顆細胞估出來的 triMean 機率，換一個 seed 或少抽兩顆細胞，還會是同一個數字嗎？）

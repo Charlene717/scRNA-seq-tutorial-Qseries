@@ -28,7 +28,8 @@ if (RUN_SOUPX) {
          FindClusters(resolution = ____)                 # 粗分群給 SoupX 用
   sc  <- setClusters(sc, setNames(tmp$seurat_clusters, colnames(tmp)))
   sc  <- autoEstCont(sc)                                # 估污染比例 rho
-  message("estimated rho = ", round(sc$fit$rhoEst, 3))  # < 0.05 可略過；> 0.10 建議校正
+  message("estimated rho = ", round(sc$fit$rhoEst, 3))  # 0.05 / 0.10 是教學用的經驗門檻，不是通用標準：
+  #   實際上要看組織與解離品質，腫瘤與壞死多的樣本 rho 天生就高。看數字也要看 SoupX 的擬合圖。
   adj <- adjustCounts(sc, roundToInt = TRUE)            # 校正後整數 counts
   saveRDS(adj, "output/rds/01_counts_soupx.rds")
 }

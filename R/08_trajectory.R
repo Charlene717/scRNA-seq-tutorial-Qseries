@@ -21,7 +21,9 @@ library(slingshot); library(tradeSeq)
 mal1 <- subset(gbm4, malignant == "malignant" & patient == "BT_S2")
 mal1 <- NormalizeData(mal1) |> FindVariableFeatures() |> ScaleData() |> RunPCA(verbose = FALSE) |>
         FindNeighbors(dims = 1:15) |> FindClusters(resolution = 0.4) |> RunUMAP(dims = 1:15)
-# 起點要有理由：用 Neftel 分數（03 的 neftel 清單）找 OPC 樣分數最高的群
+# 起點要有理由：用 Neftel 分數找 OPC 樣分數最高的群。
+# ⚠ 下面每組只列 6 個基因，是為了讓這一步跑得快的「示範用簡表」，不是 Neftel 的完整 signature
+#   （原文 Table S2 每組約 50 個；03 用的是前 12 個）。它只用來挑起點，不要拿這個分數報狀態比例。
 neftel <- list(OPC = c("BCAN", "PLP1", "GPR17", "FIBIN", "LHFPL3", "OLIG1"),
                MES = c("CHI3L1", "ANXA2", "ANXA1", "CD44", "VIM", "MT2A"))
 mal1 <- AddModuleScore(mal1, features = neftel, name = names(neftel))
