@@ -35,9 +35,10 @@ gbm <- RunPCA(gbm, npcs = 50, verbose = FALSE)
 
 ## ---- 2. pca-checks ------------------------------------------------- Q2 頁 28–31
 # 必要檢查一：PC1 是生物學，不是深度
-print(gbm[["pca"]], dims = 1:3, nfeatures = 8)        # GBM：PC1 幾乎一定是免疫 vs 膠質
+print(gbm[["pca"]], dims = 1:3, nfeatures = 8)        # 本例的 PC1 主要反映免疫 vs 膠質／惡性的對比；
+                                                      # 換一份資料要自己看載荷，不要當成 GBM 的通則
 r1 <- cor(Embeddings(gbm, "pca")[, 1], gbm$nCount_RNA)
-cat(sprintf("cor(PC1, nCount) = %.2f  （|r| < 0.3 放心；0.3–0.5 常見於惡性 RNA 量大的腫瘤，PC1 載荷是生物學即可；> 0.5 要查）\n", r1))
+cat(sprintf("cor(PC1, nCount) = %.2f  （本課的診斷經驗值，不是統計定律：|r| < 0.3 放心；0.3–0.5 常見於惡性 RNA 量大的腫瘤，PC1 載荷是生物學即可；> 0.5 要查）\n", r1))
 if (abs(r1) > 0.5) warning("PC1 與深度高度相關：回去確認 NormalizeData 有跑、且跑在 counts 上")
 
 # 必要檢查二：取幾個 PC
@@ -99,7 +100,8 @@ qc.tab <- gbm@meta.data |>
 print(qc.tab, n = 30)
 write.csv(qc.tab, "output/tables/02_per_cluster_qc.csv", row.names = FALSE)
 # 判讀：
-#   dbl > 0.5 且卡在兩大群之間 → 整群是 doublet 產物 → 03_annotate.R 移除並記錄
+#   dbl > 0.5 且卡在兩大群之間 → 「候選」doublet 群，不是判定 → §4b 三項診斷確認後，
+#                                 才在 03_annotate.R 列入 conf.dbl 移除並記錄
 #   percent.mt 明顯偏高且 nFeature 最低       → QC 殘渣 → 回 01_qc.R 調整閾值
 #   cyc 很高                    → 增殖狀態，可能混多種型別 → 註釋時小心
 #

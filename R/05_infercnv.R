@@ -210,20 +210,46 @@ gbm4$malignant <- with(gbm4@meta.data, ifelse(
   cnv.score > s.hi & cnv.cor > c.hi, "malignant",
   ifelse(cnv.score <= s.hi & cnv.cor < c.lo, "normal", "unresolved")))
 
-# 第三項證據：譜系。這幾種細胞在 GBM 裡不可能是腫瘤細胞——免疫與血管來自別的胚層，
-# 寡樹突與神經元是終末分化。它們被標成惡性一定是 doublet 或雜訊，一律改 unresolved。
+# 第三項證據：譜系。免疫與血管來自別的胚層、寡樹突與神經元是終末分化，在 GBM 裡被判成惡性
+# 多半是 doublet 或雜訊。所以這裡的處理是「證據互相衝突就不下結論」——改成 unresolved，
+# 而不是直接判成正常。注意用的是「多半」：這是先驗知識很強的一條規則，但仍然是規則，不是事實，
+# 罕見情況（例如真的存在的腫瘤內血管擬態）不該被一條規則永久排除。
 # ★ OPC 與 Astocyte 刻意不放進來：OPC-like / AC-like 正是惡性狀態的名字，
 #   把它們擋掉等於先射箭再畫靶。那兩群本來就該留在 unresolved 讓證據說話。
 lineage.normal <- c("Immune cell", "Vascular", "Oligodendrocyte", "Neuron")
+gbm4$malignant.cnv <- gbm4$malignant      # 先留一份「否決之前」的：下面比對一致性時要用它當非循環的對照
 gbm4$malignant[gbm4$malignant == "malignant" & gbm4$celltype_author %in% lineage.normal] <- "unresolved"
+cat("譜系否決把 ", sum(gbm4$malignant.cnv == "malignant") - sum(gbm4$malignant == "malignant"),
+    " 顆從 malignant 移到 unresolved\n", sep = "")
 
 # 第二項證據：按病人各成一個群集。惡性細胞應集中在 raw_clusters 中「單一病人為主」的群
 tab <- table(gbm4$malignant, gbm4$celltype_author)
 print(tab)
-# 與作者標籤比對。整體一致率會被大量的「正常細胞判對」灌高，所以三個數字要一起看：
-mal  <- gbm4$malignant == "malignant"; neo <- gbm4$celltype_author == "Neoplastic"
-cat(sprintf("整體一致率 %.1f%%｜精確率 %.1f%%（判為惡性的裡面有幾成真的是）｜召回率 %.1f%%（作者的惡性細胞抓回幾成）\n",
-            100 * mean(mal == neo), 100 * sum(mal & neo) / sum(mal), 100 * sum(mal & neo) / sum(neo)))
+
+# ★★ 與作者標籤比對——但這**不是獨立驗證**，原因要講清楚：
+#   celltype_author 在這支腳本裡出現了三次，而且都在「做決定」的那一側：
+#     ① §1a 挑 inferCNV 參考組（refs 就是從 celltype_author 選的）
+#     ② 上面的譜系否決（作者標成 Immune/Vascular/Oligo/Neuron 的一律不准判惡性）
+#     ③ 現在要拿它當標準答案
+#   被拿來幫忙做決策的資訊，又被拿來評分——這叫循環驗證，算出來的「精確率」會被自己灌高。
+#   所以下面一律叫「一致率（concordance）」，不叫 accuracy / precision / recall。
+#   真正的獨立驗證要用沒有參與分類的證據：配對的基因體 CNV、突變、或另一份獨立標註。
+#   為了讓學生看見這件事，這裡同時印兩套：
+#     · 純 CNV 版（沒有經過譜系否決）——比較接近外部比對
+#     · 最終版（CNV + 譜系否決）——課程實際使用的標註
+#   兩者的差距，就是「作者標籤參與分類」替這個數字加了多少分。
+neo      <- gbm4$celltype_author == "Neoplastic"
+mal.fin  <- gbm4$malignant    == "malignant"     # 最終版：已經過譜系否決
+mal.cnv  <- gbm4$malignant.cnv == "malignant"    # 純 CNV 版：否決之前
+conc <- function(m, tag)
+  cat(sprintf("%-12s 整體一致 %.1f%%｜判為惡性中與作者相符 %.1f%%（%d/%d）｜作者惡性被抓回 %.1f%%（%d/%d）\n",
+              tag, 100 * mean(m == neo),
+              100 * sum(m & neo) / sum(m), sum(m & neo), sum(m),
+              100 * sum(m & neo) / sum(neo), sum(m & neo), sum(neo)))
+cat("\n== 與作者標註的一致性（非獨立驗證，見上方說明）==\n")
+conc(mal.cnv, "純 CNV 版")
+conc(mal.fin, "最終版")
+cat("兩者之差＝譜系否決（用了作者標籤）對這個數字的貢獻。\n")
 print(table(gbm4$malignant, gbm4$tissue))
 # 自我檢查：參考組是確定正常的細胞，落進 unresolved 的比例應該接近 c.lo 的分位數（這裡是 10%）。
 #   遠超過的話，代表參考組裡混了不該混的東西（例如把腫瘤旁的反應性細胞也當成正常）。
@@ -233,22 +259,29 @@ cat(sprintf("參考組落進 unresolved 的比例：%.1f%%（c.lo 取 90 分位 
 # 本課的結果（實跑驗證；refs = 免疫 + 寡樹突，閾值由參考組分位數自動決定）：
 #   參考組 1,915 顆決定出：cnv.score > 0.0137、cnv.cor > 0.210（明確正常：cnv.cor < 0.115）
 #   malignant 633 顆、normal 2,051 顆、unresolved 855 顆（合計 3,539）
-#   整體一致率 87.6%｜精確率 99.4%（629/633）｜召回率 59.1%（629/1,064）
+#   最終版與作者標註：整體一致 87.6%｜判為惡性中相符 99.4%（629/633）｜作者惡性抓回 59.1%（629/1,064）
+#   ⚠ 上面這組是「最終版」的數字，而最終版用過作者標籤做譜系否決——所以它不是獨立驗證。
+#     純 CNV 版（否決之前）的數字待重跑後補上；兩者之差就是否決替這個數字加的分。
 #   參考組落進 unresolved 的比例 10.2%（預期約 10%，見下面 ①）
 #
 # 整體一致率會騙人：絕大部分是「正常細胞判成不是惡性」灌上去的。要看的是後面兩個數字。
-#   精確率 99.4% → 判為惡性的 633 顆裡，只有 4 顆不是作者標的 Neoplastic
-#   召回率 59.1% → 作者標為 Neoplastic 的細胞，抓回約六成
+#   99.4% → 判為惡性的 633 顆裡，只有 4 顆不是作者標的 Neoplastic
+#   59.1% → 作者標為 Neoplastic 的細胞，抓回約六成
+# 再強調一次：這三個數字量的是「跟作者標註有多一致」，不是「分類器有多準」。
+#   作者標籤參與了參考組挑選與譜系否決，拿它評分是循環的。真要算 precision/recall，
+#   標準答案得來自沒參與分類的證據——配對的基因體 CNV、突變、或另一份獨立標註。
 # 這個取捨是刻意的，不是失敗：這批細胞接下來要拿去做差異表達，
 #   混進一顆正常細胞的代價，遠大於少算一顆惡性細胞。寧可漏，不可錯。
 #
 # 對照組：把閾值寫死成 c.hi = 0.4、c.lo = 0.2（本課早期版本）會得到
-#   malignant 508、normal 2,418、unresolved 613；一致率 84.2%、精確率 99.8%、召回率 47.7%。
-#   換成由參考組決定之後，召回率 47.7% → 59.1%（多抓回 122 顆），精確率 99.8% → 99.4%。
+#   malignant 508、normal 2,418、unresolved 613；整體一致 84.2%、相符率 99.8%、抓回率 47.7%。
+#   換成由參考組決定之後，抓回率 47.7% → 59.1%（多抓回 122 顆），相符率 99.8% → 99.4%。
 #   這就是「讓資料決定閾值」比「抄一個數字」好的地方——而且換一份資料不用回來改。
 # 譜系否決的效果：把 Neuron 加進 lineage.normal 之後，4 顆被誤判的神經元從 malignant 移到
-#   unresolved，精確率 98.7% → 99.4%，召回率完全不動（神經元本來就不是 Neoplastic）。
+#   unresolved，「判為惡性中相符」98.7% → 99.4%，抓回率完全不動（神經元本來就不是 Neoplastic）。
 #   這說明第三項證據的角色是「否決」，不是「加分」——它只會把錯的拿掉，不會多抓對的回來。
+#   ★ 同時這也正是循環的地方：那 0.7 個百分點是用作者標籤換來的，
+#     所以「99.4%」不能拿去跟別人用獨立標準答案算出來的 precision 比。
 #
 # 兩個要看懂的副作用：
 #   ① 有 195 顆參考組細胞（免疫 187 + 寡樹突 8）落進 unresolved，佔參考組的 10.2%。

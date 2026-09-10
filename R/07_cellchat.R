@@ -35,6 +35,28 @@ gbm4$cc_label <- ifelse(gbm4$malignant == "malignant", "Malignant",
                  ifelse(gbm4$celltype_author == "Immune cell", "Macro/MG",
                         gbm4$celltype_author))
 gbm4 <- subset(gbm4, malignant != "unresolved")
+
+# ★ 把上面那個假設真的驗一次，不要只寫在註解裡。
+#   標成 Macro/MG 的細胞如果有一成以上是 T 細胞，這個名字就不該用——會讓後面每一張通訊圖
+#   都掛著一個錯的族群名，而讀圖的人不會知道。
+imm.cells <- colnames(gbm4)[gbm4$cc_label == "Macro/MG"]
+if (length(imm.cells)) {
+  chk <- c(PTPRC = "PTPRC", CD68 = "CD68", CSF1R = "CSF1R", CD3E = "CD3E", CD2 = "CD2")
+  chk <- chk[chk %in% rownames(gbm4)]
+  pos <- vapply(chk, function(g)
+    mean(Seurat::GetAssayData(gbm4, layer = "data")[g, imm.cells] > 0), numeric(1))
+  cat("\n== 檢查「Immune cell → Macro/MG」這個假設 ==\n")
+  print(round(pos, 3))
+  t.frac <- max(pos[intersect(names(pos), c("CD3E", "CD2"))], 0)
+  cat(sprintf("T 細胞標誌陽性率上限約 %.1f%%\n", 100 * t.frac))
+  if (t.frac > 0.10)
+    warning("Macro/MG 這一群裡 T 細胞標誌陽性率超過 10%——這個標籤名稱撐不住。\n",
+            "  建議改回 \"Immune\"，或先把免疫細胞做亞群分群再命名（做法見 03 §4）。\n",
+            "  沿用現在的名字的話，方法段一定要寫明它其實是免疫細胞總稱。", call. = FALSE)
+  else
+    cat("T 細胞比例低，以髓系為主的假設在這份資料上站得住；方法段仍要寫明這是依 marker 推定的。\n")
+}
+
 table(gbm4$cc_label, paste(gbm4$patient, gbm4$tissue))                      # 每群 ≥ MIN.CELLS 顆才進得了網路
 
 ## ---- 1. run-per-sample --------------------------------------------- Q3 頁 60–61

@@ -23,7 +23,7 @@ Q 系列課程的十二支 R 腳本，從讀檔一路做到反卷積與存活分
 | [`02_cluster.R`](02_cluster.R) | 前處理與週期分數 → nPC → 解析度掃描 → 穩定性檢查 → doublet 群診斷 | Q2 P25–36 | 3–5 分 |
 | [`03_annotate.R`](03_annotate.R) | marker 面板 → SingleR → 掛名字 → 免疫亞群 → Neftel 狀態分數 → 交付 | Q2 P38–64 | 10–15 分 |
 | [`04_multipatient.R`](04_multipatient.R) | 載入 GSE84465 → 未整合基線 → CCA + Harmony → 正負對照 → LISI | Q3 P8–17 | 5–10 分 |
-| [`05_infercnv.R`](05_infercnv.R) | inferCNV → CNV 分數與相關 → 三角驗證 → 與作者標籤對答案 | Q3 P21–28 | 10–30 分 |
+| [`05_infercnv.R`](05_infercnv.R) | inferCNV → CNV 分數與相關 → 三角驗證 → 與作者標註比對一致性 | Q3 P21–28 | 10–30 分 |
 | [`06a_pseudobulk_gsea.R`](06a_pseudobulk_gsea.R) | 組成分析 → 每型別 pseudobulk + 配對 DESeq2 → 火山圖 → GSEA / ORA | Q3 P29–51 | 5–10 分 |
 | [`06b_cell_level_de.R`](06b_cell_level_de.R) | 不能 pseudobulk 時的備案：MAST + 病人共變量、逐病人一致性、標籤置換 | Q3 P53–54 | 3–5 分 |
 | [`07_cellchat.R`](07_cellchat.R) | 每樣本各跑 CellChat → 六種圖 → 兩條件比較 → LIANA 交叉驗證 | Q3 P58–71 | 每樣本 5–15 分 |

@@ -103,8 +103,15 @@ de.summary <- data.frame(type = names(de), n_pairs = sapply(de, `[[`, "n.pairs")
                          inference = ifelse(sapply(de, `[[`, "inference.ok"), "yes", "exploratory-only"),   # 這一列能不能當推論結論
                          row.names = NULL)
 print(de.summary)          # 每種型別各有幾對病人、幾個顯著基因，以及這些數字能不能當結論用
-for (ty in names(de))
-  write.csv(de[[ty]]$res, sprintf("output/tables/06_de_%s.csv", gsub("[^A-Za-z0-9]+", "_", ty)), row.names = FALSE)
+# ★ 「探索性」這個狀態要跟著結果一起走，不能只留在摘要表裡。
+#   單獨打開 06_de_Malignant.csv 的人，看不到那份結果只有 2 對病人——所以直接寫進每一列。
+#   這是這門課反覆在講的同一件事：限制要跟著數字走，不要留在另一個檔案裡等人自己去查。
+for (ty in names(de)) {
+  res <- de[[ty]]$res
+  res$n_pairs         <- de[[ty]]$n.pairs
+  res$analysis_status <- if (de[[ty]]$inference.ok) "inferential" else "exploratory_only"
+  write.csv(res, sprintf("output/tables/06_de_%s.csv", gsub("[^A-Za-z0-9]+", "_", ty)), row.names = FALSE)
+}
 ## ---- 2b. 主角型別：先看資料撐不撐得住 ------------------------------ Q3 頁 36
 # 直覺上這一節的主角應該是惡性細胞。先把兩張決定性的表印出來，再決定做不做得成。
 cat("\n每位病人 × 部位，判定為惡性的細胞數：\n")
@@ -208,7 +215,13 @@ run_gsea <- function(d, sets, minSize = 15, maxSize = 500) {
 }
 gsea.all <- data.table::rbindlist(lapply(de, run_gsea, sets = gene.sets))
 gsea.all[, leadingEdge := sapply(leadingEdge, paste, collapse = ";")]    # list 欄轉字串才能存 CSV
+# 富集是接在 DE 後面的：DE 只是探索性，跑出來的富集也只是探索性——狀態要一路傳下去。
+gsea.all[, n_pairs         := vapply(de[type], `[[`, numeric(1), "n.pairs")]
+gsea.all[, analysis_status := ifelse(vapply(de[type], `[[`, logical(1), "inference.ok"),
+                                     "inferential", "exploratory_only")]
 write.csv(gsea.all, "output/tables/06_gsea_all_types.csv", row.names = FALSE)
+cat("\n各型別的分析狀態（探索性的結果不要單獨拿去下結論）：\n")
+print(unique(gsea.all[, .(type, n_pairs, analysis_status)]))
 # 每種型別、每個資料庫各看前 5：
 gsea.all[padj < 0.05, .SD[order(-abs(NES))][1:min(5, .N)], by = .(type, collection)][, .(type, collection, pathway, NES, padj)]
 
