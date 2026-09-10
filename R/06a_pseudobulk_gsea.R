@@ -57,6 +57,10 @@ topTable(fit, n = Inf)                                # 每種型別：核心 vs
 library(DESeq2)
 MIN_CELLS <- 20        # 每個「病人 × 部位」至少要有這麼多顆細胞才算一個可信的 pseudobulk 樣本
 MIN_PAIRS <- 2         # 至少要有這麼多位病人兩個部位都有樣本，配對設計才成立
+MIN_PAIRS_INF <- 4     # 少於這個對數，結果只當探索用，不當推論
+# 為什麼要兩個門檻：n = 2 對（4 個樣本、design ~ patient + tissue 用掉 3 個參數）只剩 1 個殘差自由度。
+# DESeq2 照樣會給你 p 值——但那個 p 值撐不起結論。與其不讓它跑，不如讓它跑完、把「這是探索性的」
+# 標在結果上，學生才看得到「軟體能產生 p 值 ≠ 實驗設計足夠」這件事長什麼樣子。
 
 # 把一種細胞型別的 pseudobulk + 配對 DESeq2 包成函式，之後對每種型別呼叫一次
 pb_de <- function(obj, type, min.cells = MIN_CELLS, min.pairs = MIN_PAIRS) {
@@ -82,8 +86,12 @@ pb_de <- function(obj, type, min.cells = MIN_CELLS, min.pairs = MIN_PAIRS) {
   df <- data.frame(gene = rownames(raw), baseMean = raw$baseMean,
                    log2FC = raw$log2FoldChange, log2FC_shrunk = shr$log2FoldChange,
                    stat = raw$stat, pvalue = raw$pvalue, padj = raw$padj) |> arrange(padj)
+  if (length(ok.pat) < MIN_PAIRS_INF)
+    message(sprintf("  %-16s 只有 %d 對病人（< %d）：結果標為探索性，不要當推論結論引用",
+                    type, length(ok.pat), MIN_PAIRS_INF))
   list(type = type, n = n, pb = pb, coldata = coldata, dds = dds, res = df,
-       n.sig = sum(df$padj < 0.05, na.rm = TRUE), n.pairs = length(ok.pat))
+       n.sig = sum(df$padj < 0.05, na.rm = TRUE), n.pairs = length(ok.pat),
+       inference.ok = length(ok.pat) >= MIN_PAIRS_INF)
 }
 
 types <- names(which(table(gbm4$type) >= 100))          # 細胞太少的型別連試都不用試
@@ -91,8 +99,10 @@ types <- setdiff(types, "Unassigned")
 de <- lapply(types, function(ty) pb_de(gbm4, ty)); names(de) <- types
 de <- Filter(Negate(is.null), de)
 de.summary <- data.frame(type = names(de), n_pairs = sapply(de, `[[`, "n.pairs"),
-                         n_sig_padj05 = sapply(de, `[[`, "n.sig"), row.names = NULL)
-print(de.summary)                                         # 每種型別各有幾對病人、幾個顯著基因
+                         n_sig_padj05 = sapply(de, `[[`, "n.sig"),
+                         inference = ifelse(sapply(de, `[[`, "inference.ok"), "yes", "exploratory-only"),   # 這一列能不能當推論結論
+                         row.names = NULL)
+print(de.summary)          # 每種型別各有幾對病人、幾個顯著基因，以及這些數字能不能當結論用
 for (ty in names(de))
   write.csv(de[[ty]]$res, sprintf("output/tables/06_de_%s.csv", gsub("[^A-Za-z0-9]+", "_", ty)), row.names = FALSE)
 ## ---- 2b. 主角型別：先看資料撐不撐得住 ------------------------------ Q3 頁 36
@@ -203,15 +213,25 @@ write.csv(gsea.all, "output/tables/06_gsea_all_types.csv", row.names = FALSE)
 gsea.all[padj < 0.05, .SD[order(-abs(NES))][1:min(5, .N)], by = .(type, collection)][, .(type, collection, pathway, NES, padj)]
 
 # 圖 A：Hallmark NES 熱圖 —— 列 = pathway、欄 = 細胞型別。一眼看出「缺氧只在惡性細胞升」還是「每種細胞都升」
+# ⚠ 收進這張圖的條件是「在任何一種細胞型別顯著」。所以同一列裡，有些格子是顯著的、
+#   有些只是被順帶畫出來——如果全部一律上色，讀圖的人會把不顯著的格子也讀成「有這條路徑，只是弱一點」。
+#   顏色照樣畫（方向與強度是資訊），但顯著與否要另外編碼：星號 + 不顯著的格子調淡。
 hm.top <- gsea.all[collection == "Hallmark" & padj < 0.05, unique(pathway)]
-hm.mat <- reshape2::acast(gsea.all[collection == "Hallmark" & pathway %in% hm.top], pathway ~ type, value.var = "NES")
+hm.sub <- gsea.all[collection == "Hallmark" & pathway %in% hm.top]
+hm.mat <- reshape2::acast(hm.sub, pathway ~ type, value.var = "NES")
+hm.p   <- reshape2::acast(hm.sub, pathway ~ type, value.var = "padj")
 hm.df  <- reshape2::melt(hm.mat, varnames = c("pathway", "type"), value.name = "NES")
-hm.df$sig <- with(hm.df, ifelse(is.na(NES), "", "*"))
-p <- ggplot(hm.df, aes(type, gsub("HALLMARK_", "", pathway), fill = NES)) + geom_tile(colour = "white") +
+hm.df$padj <- reshape2::melt(hm.p, varnames = c("pathway", "type"), value.name = "padj")$padj
+hm.df$sig  <- with(hm.df, ifelse(is.na(padj), "", ifelse(padj < 0.01, "**", ifelse(padj < 0.05, "*", ""))))
+hm.df$hit  <- !is.na(hm.df$padj) & hm.df$padj < 0.05        # 淡化不顯著的格子
+p <- ggplot(hm.df, aes(type, gsub("HALLMARK_", "", pathway), fill = NES)) +
+     geom_tile(aes(alpha = hit), colour = "white") +
+     geom_text(aes(label = sig), size = 3.2, vjust = 0.78) +
+     scale_alpha_manual(values = c(`TRUE` = 1, `FALSE` = 0.28), guide = "none") +
      scale_fill_gradient2(low = "#1F77B4", mid = "white", high = "#D62728", na.value = "grey92") +
      theme_classic() + theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
      labs(x = NULL, y = NULL, title = "Hallmark GSEA: NES by cell type (core vs periphery)",
-          subtitle = "red = higher in core; blue = higher in periphery; grey = not tested / NA")
+          subtitle = "red = higher in core; blue = higher in periphery; * padj<0.05, ** padj<0.01; faded = not significant; grey = not tested")
 ggsave("output/figs/06_gsea_hallmark_heatmap.png", p, width = 9, height = 0.28 * length(hm.top) + 2.5, dpi = 150, bg = "white")
 
 # 圖 B：每種型別的 GSEA 條圖（三個資料庫各取 |NES| 最大的前 8）
