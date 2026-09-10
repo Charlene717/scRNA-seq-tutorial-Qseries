@@ -24,6 +24,10 @@ if (inherits(try(suppressPackageStartupMessages(library(rjags)), silent = TRUE),
 }
 library(infercnv)
 # (a) 註釋檔：參考組 = 確定正常的細胞（免疫、寡樹突）；觀察組按病人分開
+# 參考組是整張熱圖的基準線，要用最保守的標準挑：混進 doublet 或混進惡性細胞，
+# 等於參考本身帶了 CNV 訊號，所有細胞的振幅都會被壓低，惡性與正常的界線跟著糊掉。
+# 這份資料是 Smart-seq2（孔盤式），doublet 率低，且用的是作者已驗證的標籤，所以直接取用；
+# 換成 10x 資料時，參考組要再排除 doublet 候選（02 §4c 的 doublet_status != "Keep"）。
 refs <- c("Immune cell", "Oligodendrocyte")
 stopifnot(all(refs %in% gbm4$celltype_author))
 ann <- data.frame(row.names = colnames(gbm4),

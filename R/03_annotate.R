@@ -99,13 +99,26 @@ if (length(unassigned)) { warning("這些群還沒命名，先標 Unassigned："
 #   那是被工具誤判的真實族群（腫瘤裡 RNA 量大的惡性細胞最常被誤判）——不要刪。
 # 這三項的診斷程式與判讀在 02_cluster.R §4b（對應該節輸出的 ②③④），跑 03 之前先看過那一段的輸出，
 # 確認候選群真的該刪，再往下執行。
-qc.tab <- read.csv("output/tables/02_per_cluster_qc.csv")
-dbl.cl <- as.character(qc.tab$cluster[qc.tab$dbl > 0.5])
-if (length(dbl.cl)) new.ids[dbl.cl] <- "DOUBLET"
+qc.tab    <- read.csv("output/tables/02_per_cluster_qc.csv")
+cand.dbl  <- as.character(qc.tab$cluster[qc.tab$dbl > 0.5])   # 候選：只是「值得去查」
+# 確認名單要自己填。這一份資料在 02 §4b 三項診斷全中的只有群 12，所以只寫 12。
+# 偵測不等於決定：把候選與確認分成兩個變數，換一份資料時就不會有東西被自動刪掉。
+conf.dbl  <- c("12")
+
+extra <- setdiff(cand.dbl, conf.dbl)
+if (length(extra))
+  warning("這些群 dbl > 0.5 但沒有列入確認名單，先留著不刪：", paste(extra, collapse = ", "),
+          "\n  請回 02 §4b 看它們的三項診斷，確定要刪再加進 conf.dbl。")
+gbm$doublet_status <- "Keep"                                  # 三態欄位，方法段可以直接引用
+if (length(conf.dbl)) new.ids[conf.dbl] <- "DOUBLET"
 
 gbm <- RenameIdents(gbm, new.ids)
 gbm$celltype <- Idents(gbm)
-if (any(gbm$celltype == "DOUBLET")) gbm <- subset(gbm, subset = celltype != "DOUBLET")   # 整群移除並記錄（方法段要寫）
+# 用 seurat_clusters 比對群號（celltype 這時已經換成名字了，比不到群號）
+gbm$doublet_status[as.character(gbm$seurat_clusters) %in% cand.dbl] <- "Candidate"
+gbm$doublet_status[as.character(gbm$seurat_clusters) %in% conf.dbl] <- "Confirmed"
+# 只有 Confirmed 會被移除；Candidate 留在資料裡，方法段要寫清楚哪幾群被刪、依據是什麼。
+if (any(gbm$celltype == "DOUBLET")) gbm <- subset(gbm, subset = celltype != "DOUBLET")
 gbm$celltype <- droplevels(gbm$celltype); Idents(gbm) <- "celltype"   # 清掉空的 level，圖例才不會多出空類別
 p <- DimPlot(gbm, label = TRUE, repel = TRUE) + NoLegend()
 ggsave("output/figs/03_umap_annotated.png", p, width = 7, height = 6, dpi = 150, bg = "white")
@@ -139,13 +152,20 @@ write.csv(imm.markers, "output/tables/03_immune_markers.csv", row.names = FALSE)
 # 注意：這裡「不」直接寫 Malignant。marker 只能定譜系：膠質瘤惡性細胞的正常對應細胞（星狀、OPC）
 #       就在同一塊組織裡，表現量高度重疊，所以沒有任何一組 marker 能區分惡性與正常膠質。
 #       在證據到位前就叫 Malignant，就是錯誤二（用型別標籤預設了結論）。
+# ★ Cycling 要排在 Glial 前面。前一版把兩者都用 grepl("undetermined") 抓，結果
+#   Cycling (undetermined) 被歸進 Glial——那正好違反上面剛講的錯誤三（增殖是狀態，不是型別）。
+#   譜系（l1）與狀態（l3）是兩個獨立欄位，不要混在同一欄。
 gbm$celltype_l1 <- dplyr::case_when(
+  grepl("Cycling", gbm$celltype)                            ~ "Undetermined",   # 只增殖，看不出譜系
   grepl("undetermined", gbm$celltype)                       ~ "Glial (undetermined)",
   gbm$celltype %in% c("Macrophage", "Microglia", "T cell")  ~ "Immune",
   gbm$celltype == "Oligodendrocyte"                         ~ "Oligo",
   grepl("Endothelial|Pericyte|fibroblast", gbm$celltype)    ~ "Vascular / stromal",
   TRUE                                                      ~ "Other")
+# 狀態獨立成一欄：同一顆細胞可以既是某個譜系、又處在增殖狀態。
+gbm$celltype_l3 <- dplyr::if_else(grepl("Cycling", gbm$celltype), "Cycling", NA_character_)
 table(gbm$celltype_l1)
+table(gbm$celltype_l1, gbm$celltype_l3, useNA = "ifany")   # 確認 Cycling 沒有被吃進 Glial
 
 ## ---- 5. malignant-states ------------------------------------------- Q2 頁 56–58
 # Neftel et al. 2019 (Cell) 四種狀態的 meta-module。★ 完整基因集請用論文 Table S2（每組 50 個）；
