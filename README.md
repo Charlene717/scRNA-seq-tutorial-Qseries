@@ -55,7 +55,7 @@
 
 ### Q3 · 實作篇 II：多樣本整合與下游分析（101 頁，腳本 04–10）
 
-資料：GSE84465（Darmanis et al. 2017；4 位 GBM 病人 × 腫瘤核心/浸潤邊緣，Smart-seq2，3,589 顆，含作者的細胞型別標籤——可以「對答案」）＋ TCGA-GBM Bulk。內容包括：多病人整合的兩難與方法地圖（Seurat CCA 為預設、Harmony 作比較、正負對照與 LISI）；inferCNV 判定惡性（CNV 分數與相關、四象限、三角驗證、與作者標籤對答案）；組成分析（propeller）；差異表達正確做法（pseudoreplication 為什麼錯、每型別各自 pseudobulk + 配對 DESeq2、三種 log2FC 的用途、火山圖讀法、不能 pseudobulk 時的 cell-level 備案與三道防線）；富集分析（ORA vs GSEA、Hallmark/GO/KEGG、NES 熱圖與 dotplot 讀法、五個常見錯）；細胞通訊（CellChat 六種圖的畫法與讀法、兩條件比較、LIANA 交叉驗證）；軌跡分析（Slingshot + tradeSeq、Monocle3/Monocle2 比較、手動選起點）；路徑與 TF 活性（decoupleR/PROGENy、SCENIC）；反卷積與存活分析（MuSiC + TCGA、KM/Cox）。
+資料：GSE84465（Darmanis et al. 2017；4 位 GBM 病人 × 腫瘤核心/浸潤邊緣，Smart-seq2，3,589 顆，含作者的細胞型別標籤，可以拿來比對一致性）＋ TCGA-GBM Bulk。內容包括：多病人整合的兩難與方法地圖（Seurat CCA 為預設、Harmony 作比較、正負對照與 LISI）；inferCNV 判定惡性（CNV 分數與相關、四象限、三角驗證、與作者標註比對一致性）；組成分析（propeller）；差異表達正確做法（pseudoreplication 為什麼錯、每型別各自 pseudobulk + 配對 DESeq2、三種 log2FC 的用途、火山圖讀法、不能 pseudobulk 時的 cell-level 備案與三道防線）；富集分析（ORA vs GSEA、Hallmark/GO/KEGG、NES 熱圖與 dotplot 讀法、五個常見錯）；細胞通訊（CellChat 六種圖的畫法與讀法、兩條件比較、LIANA 交叉驗證）；軌跡分析（Slingshot + tradeSeq、Monocle3/Monocle2 比較、手動選起點）；路徑與 TF 活性（decoupleR/PROGENy、SCENIC）；反卷積與存活分析（MuSiC + TCGA、KM/Cox）。
 
 ## 練習腳本（R/）
 
@@ -71,7 +71,7 @@
 | [`02_cluster.R`](R/02_cluster.R) | 前處理四行 + 週期分數 → PC1 檢查 → nPC → 解析度掃描 + clustree → 穩定性三檢查 | Q2<br>P25–36 | 3–5&nbsp;分 |
 | [`03_annotate.R`](R/03_annotate.R) | 門牌基因 → marker 面板 → FindAllMarkers → SingleR → 掛名字 → 免疫亞群重跑 → Neftel 分數 → 品質檢查 → 交付 | Q2<br>P38–64 | 10–15&nbsp;分 |
 | [`04_multipatient.R`](R/04_multipatient.R) | 載入 GSE84465 counts + metadata → 未整合基線 → Seurat CCA（預設）+ Harmony（比較）→ 正負對照 → LISI | Q3<br>P8–17 | 5–10&nbsp;分 |
-| [`05_infercnv.R`](R/05_infercnv.R) | inferCNV（參考 = 免疫 + 寡樹突）→ CNV 分數與相關 → 三角驗證 → 與作者標籤對答案 | Q3<br>P21–28 | 10–30&nbsp;分 |
+| [`05_infercnv.R`](R/05_infercnv.R) | inferCNV（參考 = 免疫 + 寡樹突）→ CNV 分數與相關 → 三角驗證 → 與作者標註比對一致性（非獨立驗證，腳本裡有說明）| Q3<br>P21–28 | 10–30&nbsp;分 |
 | [`06a_pseudobulk_gsea.R`](R/06a_pseudobulk_gsea.R) | propeller 組成 → 每型別 pseudobulk + 配對 DESeq2（ashr 收縮）→ 火山圖 → GSEA（Hallmark/GO/KEGG）+ ORA → NES 熱圖 | Q3<br>P29–51 | 5–10&nbsp;分 |
 | [`06b_cell_level_de.R`](R/06b_cell_level_de.R) | 不能 pseudobulk 時的備案：Wilcoxon 基準 → MAST + 病人共變量 → 逐病人一致性 → 標籤置換 → 標註限制交付 | Q3<br>P53–54 | 3–5&nbsp;分 |
 | [`07_cellchat.R`](R/07_cellchat.R) | 每樣本各跑 CellChat → 六種圖 → mergeCellChat 兩條件比較 → LIANA 共識交叉驗證 | Q3<br>P58–71 | 每樣本&nbsp;5–15&nbsp;分 |
