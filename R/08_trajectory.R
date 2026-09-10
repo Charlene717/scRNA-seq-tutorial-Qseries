@@ -7,8 +7,9 @@
 # 時間：§1 約 5–10 分鐘；§2 約 2 分鐘；§3（選配）約 5–10 分鐘
 # 安裝（選配段）：見 00_setup.R——monocle3 + SeuratWrappers（GitHub）、monocle（Bioconductor）
 # 前提：軌跡假設「連續過程」；跨病人混做會把病人差異當成軌跡，所以只在一位病人的惡性細胞內做。
-# ⚠ 軌跡對 doublet 也特別敏感：doublet 落在兩群中間，正好會被連成一條假的過渡路徑或假分支。
-#   這是最容易生出假故事的一種分析——動手前先確認 doublet 處理過（02_cluster.R §4c）。
+# ⚠ 軌跡對 doublet 也特別敏感：doublet 落在兩群中間，正好會被連成一條假的過渡路徑或假分支，
+#   是最容易生出假故事的一種分析。本節的 GSE84465 是 Smart-seq2，沒有跑 doublet 偵測（見 02 §4c），
+#   所以這裡不必找 doublet_status；換成 10x 資料做軌跡時，務必先照 02 §4c 處理過再來。
 # =====================================================================
 library(Seurat); library(dplyr); library(ggplot2)
 set.seed(1234)

@@ -30,8 +30,8 @@ library(infercnv)
 # (a) 註釋檔：參考組 = 確定正常的細胞（免疫、寡樹突）；觀察組按病人分開
 ## TODO ▶ 誰是「確定正常」的參考組？為什麼不是星狀細胞？（Q3 頁 20、22）
 # 參考組是整張熱圖的基準線，要用最保守的標準挑：混進 doublet 或惡性細胞，等於參考本身帶了
-# CNV 訊號，所有細胞的振幅會被壓低。這份是 Smart-seq2（doublet 率低）；換 10x 要再排除
-# doublet 候選（02 §4c 的 doublet_status != "Keep"）。
+# CNV 訊號，所有細胞的振幅會被壓低。這份是 Smart-seq2（doublet 率低）；換 10x 資料時，
+# 參考組要只留 doublet_status == "Keep" 的細胞（欄位由 03 建立，做法見 02 §4c）。
 refs <- c("____", "____")
 stopifnot(all(refs %in% gbm4$celltype_author))
 ann <- data.frame(row.names = colnames(gbm4),
@@ -171,7 +171,12 @@ stopifnot("inferCNV 的細胞與 gbm4 對不上：確認讀的是同一份 04 �
 cnv.score <- colMeans((cnv.all - 1)^2)                # ① 偏離參考的程度
 top       <- names(sort(cnv.score, decreasing = TRUE))[1:200]
 mal.prof  <- rowMeans(cnv.all[, top])                 #   「最像惡性」的 200 顆平均 profile
-cnv.cor   <- apply(cnv.all, 2, cor, y = mal.prof)     # ② 與惡性 profile 的相關（Tirosh 2016）
+cnv.cor   <- apply(cnv.all, 2, cor, y = mal.prof)     # ② 與惡性 profile 的相關
+# 「分數 + 相關」這兩個維度的想法來自 Tirosh 2016 / Neftel 2019，但上面這段**不是原文分類器的
+# 忠實實作**：原文是拿細胞的 CNA profile 去比對「該腫瘤已知的惡性 CNA profile」，
+# 這裡則是先用同一個 cnv.score 排序、取前 200 顆自建 profile，再回頭算相關——
+# 帶著一點自我印證的味道，當教學示範可以，寫進論文要說清楚做法，或改用原文的定義。
+# 練習 5-2 就是這個簡化的敏感度測試（200 改成 50 / 500）：分類穩不穩，決定它站不站得住。
 
 gbm4$cnv.score <- cnv.score[colnames(gbm4)]
 gbm4$cnv.cor   <- cnv.cor[colnames(gbm4)]

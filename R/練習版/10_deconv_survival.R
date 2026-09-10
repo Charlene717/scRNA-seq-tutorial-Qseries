@@ -51,13 +51,28 @@ bulk.mtx <- assay(bulk, "unstranded"); rownames(bulk.mtx) <- rowData(bulk)$gene_
 #       把兩者加起來，等於把多重比對造成的雜訊灌進那個基因，反卷積的比例會跟著偏。
 #   所以加總會把後面這一類「不同的東西」混成一個，比隨機挑一個更難察覺。
 #
-# 比較穩妥的兩種做法：
-#   ① 全程用 Ensembl ID 當索引，只在最後畫圖／報表時才轉成名字——問題根本不會發生（推薦）。
-#   ② 真的要折成符號時，先看一眼重複的是什麼，再挑「表現量最高」的那一列留下：
-#        keep <- order(rowSums(bulk.mtx), decreasing = TRUE)
-#        bulk.mtx <- bulk.mtx[keep, ][!duplicated(rownames(bulk.mtx)[keep]), ]
-#      至少不是靠列的順序決定，而且留下的是主要表現的那個基因座。
-# 練習 10-4 會請你比較這三種做法對反卷積比例的影響。
+# 那要怎麼辦？先講一件常被誤導的事：**「全程用 Ensembl ID 就沒事了」並不成立。**
+#   轉換只是被延後，不會消失——只要你要跟「用符號當索引的外部資源」對接，就得轉一次：
+#     · 本節的 MuSiC：參考組 ref 是單細胞物件，rownames 就是基因符號（見下面的 intersect），
+#       所以 bulk 這一側非得在符號空間不可，否則對不起來。
+#     · 06a 的富集：msigdbr 給的基因集是 gene_symbol；KEGG 那一路還要 Entrez。
+#     · marker 清單、CellChatDB 也都是符號。
+#   真正能控制的不是「要不要轉」，而是**在哪裡轉、轉的時候有沒有看見**。
+#
+# 所以本節的做法是：留在符號空間，但把折疊規則寫清楚，而不是讓 !duplicated() 靠列的順序決定。
+#   建議的折法（先看一眼重複是什麼，再挑「表現量最高」的那一列留下）：
+#     keep <- order(rowSums(bulk.mtx), decreasing = TRUE)
+#     bulk.mtx <- bulk.mtx[keep, ][!duplicated(rownames(bulk.mtx)[keep]), ]
+#   至少不靠列的順序，留下的是主要表現的那個基因座，而且規則寫得進方法段。
+#
+# 什麼時候「晚一點再轉」才真的有幫助：
+#   當中間的計算步驟不需要外部資源時（正規化、DE、批次校正），用 Ensembl ID 做完再轉，
+#   統計本身就跑在沒有歧義的索引上，折疊只影響最後那一步的標示，看得到也改得動。
+#   另外，有些工具可以反過來把「基因集」換到你的 ID 空間（clusterProfiler 的 keyType = "ENSEMBL"、
+#   msigdbr 輸出裡的 Ensembl 欄位，欄名隨版本不同，用 names() 確認）。
+#   那個方向通常比較安全：策展好的基因集遇到一名多座，本來就會把幾個座位都列進去，
+#   而把自己的矩陣折疊掉，資訊是真的少了一份。
+# 練習 10-4 會請你實際比較幾種做法對反卷積比例的影響。
 table(dup = duplicated(rownames(bulk.mtx)))              # 先知道有幾個重複，再決定怎麼處理
 bulk.mtx <- bulk.mtx[!duplicated(rownames(bulk.mtx)), ]
 # ★ 統計單位的問題，在這裡換到 Bulk 這一層。TCGA barcode 的第 4 段是樣本型別：
@@ -122,6 +137,8 @@ sessionInfo()
 #       反卷積對參考的敏感度告訴你什麼？
 #  10-4 §1 的重複 symbol：先用 rowData(bulk) 看這些重複是什麼（有幾個是 _PAR_Y？有幾個是
 #       蛋白編碼撞上假基因／lncRNA？）。接著把「留第一個」換成「留表現量最高的那一列」重跑反卷積，
-#       免疫比例差多少？最後想一想：如果改成 rowsum() 加總，哪一類重複會被加錯、為什麼？
+#       免疫比例差多少？兩個延伸問題：(a) 如果改成 rowsum() 加總，哪一類重複會被加錯、為什麼？
+#       (b) 有人主張「全程用 Ensembl ID 就不會有這個問題」——看一下 §1 的 intersect 那一行，
+#       這個主張在本節成立嗎？要成立的話，還得多做什麼？
 #  進階 用 BayesPrism 重做 §1，比較兩種反卷積估的免疫比例（相關係數、Bland–Altman 圖）。
 # =====================================================================

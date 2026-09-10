@@ -227,10 +227,12 @@ if (length(cand)) {
 #   只做 pseudobulk DE 的話，留著不刪也不至於改變結論。刪與不刪都要寫進方法段。
 #
 # 四、與其二選一，不如保留標記
-#   03 會建立 gbm$doublet_status（Keep / Candidate / Confirmed）。只有 Confirmed 被移除，
-#   Candidate 留在資料裡但標記著。之後任何一個敏感的下游分析都可以用
-#   subset(obj, subset = doublet_status == "Keep") 臨時排除，不必回頭重跑整條流程；
+#   03 會在這份 10x 物件上建立 gbm$doublet_status（Keep / Candidate / Confirmed）。
+#   只有 Confirmed 被移除，Candidate 留在資料裡但標記著。Q2 這條線上任何敏感的步驟都可以用
+#   subset(gbm, subset = doublet_status == "Keep") 臨時排除，不必回頭重跑整條流程；
 #   也隨時能回答審稿人「你刪掉了哪些、依據是什麼」。
+#   ※ 這個欄位只存在於 Q2 的 10x 物件。Q3（04–10）用的是另一份 Smart-seq2 資料，沒有跑
+#     doublet 偵測，那些腳本裡不會有 doublet_status——不是漏掉，是不需要。
 
 ## ---- 5. save -------------------------------------------------------
 saveRDS(gbm, "output/rds/02_gbm_clustered.rds")
