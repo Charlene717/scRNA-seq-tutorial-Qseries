@@ -37,10 +37,24 @@ if (file.exists("MANIFEST.txt")) {                       # 跨磁碟（專案在
 }
 bulk <- GDCprepare(q, directory = GDC_DIR)                                   # 本例回來 391 個檔案，含臨床欄位
 bulk.mtx <- assay(bulk, "unstranded"); rownames(bulk.mtx) <- rowData(bulk)$gene_name
-# 重複的基因 symbol（多個 Ensembl ID 對到同一個名字）直接留第一個，是最省事但最粗糙的做法：
-# 留下哪一個取決於列的順序。比較好的是把它們加總起來，或乾脆全程用 Ensembl ID、最後再轉名字。
-# 這裡為了流程單純用去重；正式分析建議改成下面這行（練習 10-4）：
-#   bulk.mtx <- rowsum(bulk.mtx, group = rownames(bulk.mtx))
+# 重複的基因 symbol（多個 Ensembl ID 對到同一個名字）這裡直接留第一個。這是最省事的做法，
+# 但留下哪一個取決於列的順序，等於隨機挑——正式分析要處理得更清楚一點。
+# ⚠ 不要反射性地用 rowsum() 加總。加總對「轉錄本 → 基因」是對的（那些本來就是同一個基因的片段），
+#   但這裡的重複是「不同的基因座剛好共用一個名字」，性質完全不同：
+#     · _PAR_Y：擬體染色體區的基因在 X 與 Y 各註記一次。這確實是同一個基因，加總無妨
+#       （Y 那一份通常是 0，因為讀序都被指派到 X）。
+#     · 不同 Ensembl ID 共用符號：常見的是蛋白編碼基因與它的假基因／lncRNA 撞名。
+#       把兩者加起來，等於把多重比對造成的雜訊灌進那個基因，反卷積的比例會跟著偏。
+#   所以加總會把後面這一類「不同的東西」混成一個，比隨機挑一個更難察覺。
+#
+# 比較穩妥的兩種做法：
+#   ① 全程用 Ensembl ID 當索引，只在最後畫圖／報表時才轉成名字——問題根本不會發生（推薦）。
+#   ② 真的要折成符號時，先看一眼重複的是什麼，再挑「表現量最高」的那一列留下：
+#        keep <- order(rowSums(bulk.mtx), decreasing = TRUE)
+#        bulk.mtx <- bulk.mtx[keep, ][!duplicated(rownames(bulk.mtx)[keep]), ]
+#      至少不是靠列的順序決定，而且留下的是主要表現的那個基因座。
+# 練習 10-4 會請你比較這三種做法對反卷積比例的影響。
+table(dup = duplicated(rownames(bulk.mtx)))              # 先知道有幾個重複，再決定怎麼處理
 bulk.mtx <- bulk.mtx[!duplicated(rownames(bulk.mtx)), ]
 # ★ 統計單位的問題，在這裡換到 Bulk 這一層。TCGA barcode 的第 4 段是樣本型別：
 #   01 = 原發腫瘤、02 = 復發、11 = 癌旁正常組織。三種混在一起做存活分析沒有意義。
@@ -101,7 +115,8 @@ sessionInfo()
 #  10-2 在 Cox 模型加入 age 之後，imm_pct 的 HR 變化多少？這代表什麼？
 #  10-3 參考組（sc 端）把 Other 拆成 Astrocyte / OPC / Neuron 重跑：Immune 的估計比例變多少？
 #       反卷積對參考的敏感度告訴你什麼？
-#  10-4 把 §1 的去重改成 rowsum(bulk.mtx, group = rownames(bulk.mtx)) 加總重複 symbol，
-#       重跑反卷積：免疫比例的估計差多少？受影響的主要是哪一類基因？
+#  10-4 §1 的重複 symbol：先用 rowData(bulk) 看這些重複是什麼（有幾個是 _PAR_Y？有幾個是
+#       蛋白編碼撞上假基因／lncRNA？）。接著把「留第一個」換成「留表現量最高的那一列」重跑反卷積，
+#       免疫比例差多少？最後想一想：如果改成 rowsum() 加總，哪一類重複會被加錯、為什麼？
 #  進階 用 BayesPrism 重做 §1，比較兩種反卷積估的免疫比例（相關係數、Bland–Altman 圖）。
 # =====================================================================
