@@ -29,6 +29,9 @@ if (inherits(try(suppressPackageStartupMessages(library(rjags)), silent = TRUE),
 library(infercnv)
 # (a) 註釋檔：參考組 = 確定正常的細胞（免疫、寡樹突）；觀察組按病人分開
 ## TODO ▶ 誰是「確定正常」的參考組？為什麼不是星狀細胞？（Q3 頁 20、22）
+# 參考組是整張熱圖的基準線，要用最保守的標準挑：混進 doublet 或惡性細胞，等於參考本身帶了
+# CNV 訊號，所有細胞的振幅會被壓低。這份是 Smart-seq2（doublet 率低）；換 10x 要再排除
+# doublet 候選（02 §4c 的 doublet_status != "Keep"）。
 refs <- c("____", "____")
 stopifnot(all(refs %in% gbm4$celltype_author))
 ann <- data.frame(row.names = colnames(gbm4),

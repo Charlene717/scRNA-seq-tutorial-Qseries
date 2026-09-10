@@ -29,7 +29,10 @@ mat <- as.matrix(LayerData(gbm4, layer = "data"))
 act <- run_mlm(mat = mat, net = net, .source = "source", .target = "target", .mor = "weight", minsize = 5)
 act.w <- act |> tidyr::pivot_wider(id_cols = source, names_from = condition, values_from = score) |>
          tibble::column_to_rownames("source") |> as.matrix()
-gbm4[["progeny"]] <- CreateAssayObject(act.w[, colnames(gbm4)])
+# 用 data= 而不是位置參數。CreateAssayObject() 的第一個參數是 counts，
+# 但 PROGENy 活性是推出來的連續分數（會有負值），不是計數；放進 counts 之後
+# 任何「以為拿到的是 counts」的後續函式都可能默默算錯。
+gbm4[["progeny"]] <- CreateAssayObject(data = act.w[, colnames(gbm4)])
 DefaultAssay(gbm4) <- "progeny"
 FeaturePlot(gbm4, features = c("Hypoxia", "JAK-STAT", "EGFR", "TGFb"), ncol = 4); ggsave("output/figs/09_progeny_umap.pdf", width = 16, height = 4, bg = "white")
 # 條件比較：惡性細胞的路徑活性 → 病人 × 部位 平均 → 配對檢定（單位 = 病人）
@@ -42,13 +45,27 @@ pa <- md |> group_by(patient, tissue) |> summarise(hyp = mean(hyp), n = dplyr::n
       tidyr::pivot_wider(names_from = tissue, values_from = c(hyp, n))
 for (v in c("n_Tumor", "n_Periphery")) pa[[v]][is.na(pa[[v]])] <- 0
 cat("\n== 每位病人各部位：Hypoxia 活性平均與惡性細胞數 ==\n"); print(as.data.frame(pa))
-ok <- pa$n_Tumor > 0 & pa$n_Periphery > 0        # 兩側都有惡性細胞才配得成對
 MINCELL <- 20                                    # 少於這個數的那一格，平均值不穩，方向翻過來很正常
-thin <- ok & (pa$n_Tumor < MINCELL | pa$n_Periphery < MINCELL)
-cat("進入配對檢定的病人數 n =", sum(ok), "／ 共", nrow(pa), "位\n")
-if (any(thin)) cat("注意：", paste(pa$patient[thin], collapse = "、"),
+paired <- pa$n_Tumor > 0 & pa$n_Periphery > 0    # 兩側都有惡性細胞才配得成對
+ok     <- paired & pa$n_Tumor >= MINCELL & pa$n_Periphery >= MINCELL   # 還要每一格都夠厚
+thin   <- paired & !ok
+cat("配得成對的病人數 =", sum(paired), "／ 其中每格都 ≥", MINCELL, "顆的 =", sum(ok),
+    "／ 共", nrow(pa), "位\n")
+if (any(thin)) cat("排除：", paste(pa$patient[thin], collapse = "、"),
                    "有一側不到", MINCELL, "顆惡性細胞，那一格的平均只是幾顆細胞的平均\n")
-print(t.test(pa$hyp_Tumor[ok], pa$hyp_Periphery[ok], paired = TRUE))
+# ★ 門檻要真的擋得住。前一版只把不足的病人印成警告，t.test 照跑照印 p 值——
+#   那等於嘴上說不可信、手上還是產出了一個正式的統計結果。這裡改成：不夠就不做推論，
+#   只畫描述性的配對圖。這正是這門課要教的：軟體跑得動，不代表這個分析該跑。
+if (sum(ok) >= 3) {
+  print(t.test(pa$hyp_Tumor[ok], pa$hyp_Periphery[ok], paired = TRUE))
+} else {
+  cat("\n>> 每格 ≥", MINCELL, "顆的配對病人只有", sum(ok), "位，不做配對檢定。\n",
+      "   下面只畫描述性的配對變化圖；報告裡要寫的是「資料條件不允許做這個比較」，\n",
+      "   而不是一個沒有意義的 p 值。\n")
+  matplot(t(as.matrix(pa[paired, c("hyp_Tumor", "hyp_Periphery")])), type = "b", pch = 16,
+          xaxt = "n", ylab = "PROGENy Hypoxia", xlab = "", main = "Descriptive only (n too small)")
+  axis(1, at = 1:2, labels = c("Tumor", "Periphery"))
+}
 # 本例的邊緣側惡性細胞數：BT_S1 = 1、BT_S2 = 13、BT_S4 = 17、BT_S6 = 0。
 # 三個配得成對的病人，邊緣那一格全都不到 20 顆；BT_S1 那個 3.80 是「一顆細胞」的值。
 # 所以這裡有兩層問題，而且第一層就足以判出局：
@@ -70,7 +87,7 @@ DefaultAssay(gbm4) <- "RNA"
 #   pyscenic aucell output/09_gbm4.loom output/09_reg.csv -o output/09_auc.loom
 if (file.exists("output/tables/09_scenic_auc.csv")) {                      # regulon × cell（自 auc.loom 匯出）
   auc <- read.csv("output/tables/09_scenic_auc.csv", row.names = 1, check.names = FALSE)
-  gbm4[["scenic"]] <- CreateAssayObject(as.matrix(auc)[, colnames(gbm4)])
+  gbm4[["scenic"]] <- CreateAssayObject(data = as.matrix(auc)[, colnames(gbm4)])   # AUC 也是分數，同上
   DoHeatmap(subset(gbm4, downsample = 100), features = c("SOX2(+)", "OLIG2(+)", "SOX10(+)", "SPI1(+)", "CEBPB(+)", "TCF7(+)", "ERG(+)"),
             assay = "scenic", group.by = "type")   # cc_label 是 07 建的，06 的物件裡沒有
   DefaultAssay(gbm4) <- "RNA"
