@@ -7,6 +7,9 @@
 # 時間：每個樣本約 5–15 分鐘（8 個樣本，建議先跑一位病人）；跑過的樣本會存成 rds，
 #       第二次執行由 REUSE.RDS 直接讀回，只有 06 的輸出更新時才重算
 # 安裝：devtools::install_github("jinworks/CellChat")；LIANA：remotes::install_github("saezlab/liana")
+# ⚠ 通訊分析對 doublet 特別敏感：一顆 doublet 同時帶著配體與受體，會憑空生出不存在的通訊對，
+#   而且常常剛好落在「看起來像新發現」的位置。做這一段之前先確認 doublet 已經處理過
+#   （做法與取捨見 02_cluster.R §4c）；留著 Candidate 的話，至少跑一次排除版比較結論差多少。
 # =====================================================================
 library(Seurat); library(dplyr); library(ggplot2); library(CellChat); library(patchwork)
 set.seed(1234)
