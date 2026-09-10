@@ -7,6 +7,8 @@
 # 時間：§1 約 5–10 分鐘；§2 約 2 分鐘；§3（選配）約 5–10 分鐘
 # 安裝（選配段）：見 00_setup.R——monocle3 + SeuratWrappers（GitHub）、monocle（Bioconductor）
 # 前提：軌跡假設「連續過程」；跨病人混做會把病人差異當成軌跡，所以只在一位病人的惡性細胞內做。
+# ⚠ 軌跡對 doublet 也特別敏感：doublet 落在兩群中間，正好會被連成一條假的過渡路徑或假分支。
+#   這是最容易生出假故事的一種分析——動手前先確認 doublet 處理過（02_cluster.R §4c）。
 # =====================================================================
 # ---------------------------------------------------------------------
 # 【練習版】把 ____ 填上再執行。每個空格上方的「## TODO ▶」寫了要回答的問題與影片頁碼。
@@ -31,6 +33,15 @@ root <- names(which.max(tapply(mal1$OPC1, Idents(mal1), mean)))
 sce  <- as.SingleCellExperiment(mal1)
 ## TODO ▶ 軌跡的起點要有生物學理由：哪一群？（Q3 頁 67–68）
 sce  <- slingshot(sce, clusterLabels = "seurat_clusters", reducedDim = "UMAP", start.clus = ____)
+# Slingshot 可能找出不只一條 lineage。本課只教單一主軌跡，所以這裡先確認真的只有一條；
+# 若有分支，[, 1] 會只取第一條，其餘 lineage 上的細胞拿到 NA，下面的 cellWeights = 1 也就跟著錯。
+n.lin <- ncol(slingPseudotime(sce))
+if (n.lin > 1)
+  stop("Slingshot 找出 ", n.lin, " 條 lineage，這支腳本只處理單一軌跡。\n",
+       "  要做分支軌跡，pseudotime 與 cellWeights 都要傳整個矩陣：\n",
+       "    fitGAM(counts = ..., pseudotime = slingPseudotime(sce, na = FALSE),\n",
+       "           cellWeights = slingCurveWeights(sce), nknots = 6)\n",
+       "  或先縮小細胞子集／換 start.clus，讓結構回到單一軌跡再跑。", call. = FALSE)
 mal1$pt <- slingPseudotime(sce)[, 1]
 p <- FeaturePlot(mal1, features = "pt") + ggtitle(paste("pseudotime, root =", root))
 ggsave("output/figs/08_pseudotime.pdf", p, width = 5, height = 4, bg = "white")
@@ -42,6 +53,7 @@ cor(mal1$pt, mal1$S.Score, use = "complete.obs"); cor(mal1$pt, mal1$G2M.Score, u
 keep   <- !is.na(mal1$pt)
 counts <- LayerData(mal1, layer = "counts")[VariableFeatures(mal1), keep]
 ## TODO ▶ GAM 的節點數（Q3 頁 68）
+# 只有一條 lineage（上面已確認），所以權重全給 1 是對的；有分支時必須改用 slingCurveWeights()。
 gam    <- fitGAM(counts = as.matrix(counts), pseudotime = mal1$pt[keep], cellWeights = rep(1, sum(keep)), nknots = ____)
 # 排序要用 waldStat，不能用 pvalue：本例有 38 個基因的 p 直接下溢成 0，
 # order(pvalue) 在它們之間是任意順序——TAGLN（waldStat 91）會排到第一，

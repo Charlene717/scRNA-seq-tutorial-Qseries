@@ -57,7 +57,10 @@ common <- intersect(rownames(bulk.mtx), rownames(ref))
 est <- music_prop(bulk.mtx = bulk.mtx[common, ], sc.sce = ref[common, ], clusters = "____", samples = "____")
 prop <- as.data.frame(est$Est.prop.weighted); write.csv(prop, "output/tables/10_deconv_tcga_gbm.csv")
 ## ---- 2. survival ---------------------------------------------------- Q3 頁 75
-# 存活：免疫（巨噬）比例上下半
+# 存活：免疫細胞「總」比例的上下半
+# ⚠ 命名要跟算出來的東西一致。這裡的 prop$Immune 是所有免疫細胞合起來的比例，
+#   不是巨噬細胞比例——參考組在 §1 只分到 Immune 這一層，拆不出 TAM。
+#   把變數叫 mac_、圖檔叫 macrophage，讀的人會以為看到的是巨噬細胞，那是過度解讀。
 clin <- as.data.frame(colData(bulk))[rownames(prop), ]
 clin$time  <- ifelse(clin$vital_status == "Dead", clin$days_to_death, clin$days_to_last_follow_up) / 30.4
 clin$event <- as.integer(clin$vital_status == "Dead")
@@ -72,26 +75,32 @@ cat("可分析人數", sum(!is.na(clin$time)), "／ 死亡事件", sum(clin$even
 # 這是公開資料的常態，不是這支腳本的 bug——但它必須寫進報告的限制，不能默默略過。
 # 要補救就得另外抓臨床追蹤表（GDCquery_clinic 或 clinical supplement）把追蹤時間補回來；
 # 補不回來時，能說的只有組間比較（兩組同樣被削），不能報絕對中位存活。
-clin$mac_hi <- prop$Immune > median(prop$Immune)
-fit <- survfit(Surv(time, event) ~ mac_hi, data = clin)
-p <- ggsurvplot(fit, pval = TRUE, risk.table = TRUE, xlab = "Months"); pdf("output/figs/10_km_macrophage.pdf", 7, 6); print(p); dev.off()
-print(survdiff(Surv(time, event) ~ mac_hi, data = clin))                    # log-rank 的 p 要印出來，不能只看圖上那個字
+clin$imm_hi  <- prop$Immune > median(prop$Immune)      # 二分：畫 KM 用
+clin$imm_pct <- prop$Immune * 100                      # 連續：Cox 用（不用先切成兩組）
+fit <- survfit(Surv(time, event) ~ imm_hi, data = clin)
+p <- ggsurvplot(fit, pval = TRUE, risk.table = TRUE, xlab = "Months"); pdf("output/figs/10_km_immune.pdf", 7, 6); print(p); dev.off()
+print(survdiff(Surv(time, event) ~ imm_hi, data = clin))                    # log-rank 的 p 要印出來，不能只看圖上那個字
 # 年齡是這裡的陽性對照：GBM 的年齡效應是已知的，它若沒出來，代表臨床欄位或時間軸接錯了。
-print(summary(coxph(Surv(time, event) ~ mac_hi + age_at_index, data = clin)))   # 實際分析還要調整 MGMT、IDH
+# 中位數切兩半會丟掉組內的變異，只適合畫圖；Cox 以連續變項為主要分析，
+# HR 讀成「免疫比例每多 1 個百分點」的風險比。兩種都印出來，結論要一致才站得住。
+print(summary(coxph(Surv(time, event) ~ imm_pct + age_at_index, data = clin)))  # 主要分析：連續
+print(summary(coxph(Surv(time, event) ~ imm_hi  + age_at_index, data = clin)))  # 對照：二分
+# 實際分析還要調整 MGMT 甲基化、IDH 狀態；免疫比例也受腫瘤純度影響，正式報告要做敏感度分析。
 # 本例實測：391 個檔案 → 372 份原發 → 去重後 284 位病人 → 229 位可分析（227 個死亡事件）。
-#   巨噬比例   HR 1.10（95% CI 0.85–1.44），log-rank p = 0.5，Cox p = 0.46 → 看不出關聯
+#   免疫總比例（二分）HR 1.10（95% CI 0.85–1.44），log-rank p = 0.5，Cox p = 0.46 → 看不出關聯
+#                     （連續版的 HR 這一版新增，重跑後把數字補進來）
 #   年齡       HR 1.03/歲（1.02–1.04），p = 1.8e-06                       → 陽性對照有出來
 # 陽性對照有出來這件事很重要：它證明臨床欄位、時間軸、模型都接對了，
-# 所以「巨噬比例看不出關聯」是一個可以報的結果，不是「程式壞了」。
+# 所以「免疫總比例看不出關聯」是一個可以報的結果，不是「程式壞了」。
 # 為什麼會是 null？最可能的原因是解析度：這裡的 Immune 把所有免疫細胞併成一格，
 # 而文獻連結到預後的是特定的 TAM 狀態，不是巨噬細胞總量（見練習 10-3）。
 sessionInfo()
 
 # =====================================================================
 # ▶ 練習 10
-#  10-1 用 Malignant 比例（純度）分組做 KM，跟巨噬比例的結果方向相同嗎？兩者相關係數多少？
-#  10-2 在 Cox 模型加入 age 之後，mac_hi 的 HR 變化多少？這代表什麼？
+#  10-1 用 Malignant 比例（純度）分組做 KM，跟免疫比例的結果方向相同嗎？兩者相關係數多少？
+#  10-2 在 Cox 模型加入 age 之後，imm_pct 的 HR 變化多少？這代表什麼？
 #  10-3 參考組（sc 端）把 Other 拆成 Astrocyte / OPC / Neuron 重跑：Immune 的估計比例變多少？
 #       反卷積對參考的敏感度告訴你什麼？
-#  進階 用 BayesPrism 重做 §1，比較兩種反卷積估的巨噬比例（相關係數、Bland–Altman 圖）。
+#  進階 用 BayesPrism 重做 §1，比較兩種反卷積估的免疫比例（相關係數、Bland–Altman 圖）。
 # =====================================================================
