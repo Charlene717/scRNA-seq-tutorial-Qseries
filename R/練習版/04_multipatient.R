@@ -164,7 +164,7 @@ write.csv(ctrl.wide, "output/tables/04_integration_controls.csv", row.names = FA
 # 整合原則：整合空間只用來註釋正常細胞、對齊免疫細胞；惡性細胞回未整合空間、按病人看。
 # （存檔統一放在 §5 結尾，那時 LISI 欄位才算完；這裡先不存，免得同一個大物件寫兩次）
 
-## ---- 5. integration-metrics ---------------------------------------- Q3 頁 16
+## ---- 5. integration-metrics ---------------------------------------- Q3 頁 16–17
 # 把「混得好不好」變成數字：每群病人組成 + LISI，兩個整合空間各算一次
 round(prop.table(table(gbm4$cca_clusters, gbm4$patient), 1), 2)          # 正常細胞的群：四位病人都該有
 library(lisi)                                     # remotes::install_github("immunogenomics/lisi")
