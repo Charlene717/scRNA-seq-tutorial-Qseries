@@ -4,9 +4,17 @@
 # 對應影片：Q2 頁 7–8、Q3 頁 8
 # 執行方式：在 RStudio 開啟專案（.Rproj），從專案根目錄逐段執行。
 #           第一次執行約 10–20 分鐘（安裝套件 + 下載約 90 MB 資料）。
-#           ⚠ 跑完 00 之後請重開 R（Session → Restart R）再跑 01。
-#             下面檢查套件用的 requireNamespace() 會把三百多個命名空間載進來，
-#             留著往下跑等於一開始就帶著一堆用不到的套件，出問題時很難判斷是誰的。
+#           ⚠ 跑完 00 之後建議重開 R（Session → Restart R）再跑 01。兩個理由：
+#             ① 00 的工作就是裝套件。裝完在同一個 session 裡馬上用，容易碰到
+#                「舊版命名空間還載在記憶體裡、新版在硬碟上」的錯位——下面 JAGS
+#                那一段本來就寫了「裝完要重開 R」，是同一件事。
+#             ② requireNamespace() 不是只做檢查：載入一個命名空間時，R 會把它的
+#                Depends attach 到搜尋路徑上。本例 GEOquery 的 Depends 是 Biobase，
+#                所以 00 跑完 sessionInfo() 會看到沒有人 library() 過的 Biobase 與
+#                BiocGenerics 出現在 attached 清單裡，而 BiocGenerics 會遮蔽
+#                intersect、union、table、order、unique、match、saveRDS 等 base 函數。
+#                它們是 S4 generic、對 base 型別會 dispatch 回 base，所以多半不會出事——
+#                但「多半」不等於「沒有改變」，而重開 R 只要兩秒。
 # 練習資料：
 #   (1) 10x GBM 5k  — Human Glioblastoma Multiforme 3'v3, Cell Ranger 4.0.0, 5,604 cells
 #   (2) GSE84465    — Darmanis et al. 2017, 4 GBM patients, core vs periphery, Smart-seq2
