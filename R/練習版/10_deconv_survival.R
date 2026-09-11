@@ -65,7 +65,12 @@ bulk.mtx <- assay(bulk, "unstranded"); rownames(bulk.mtx) <- rowData(bulk)$gene_
 #
 # 所以本節留在符號空間，但把折疊規則寫明，分三步做（下面 §1b）：
 #   ① 先看重複的組成——不知道重複是什麼，就沒有立場決定怎麼處理
-#   ② 用 gene_type 篩到蛋白編碼：撞名多半在這一步就消失，而且判斷依據是「註解」不是「這批資料的數值」
+#   ② 用 gene_type 拆撞名：判斷依據是「註解」不是「這批資料的數值」，換一批病人結果一樣
+#      ⚠ 別預期它能解決大部分。本例 1,233 個撞名列裡，這一步只拆掉 7 列。
+#         看第①步印出來的組成就知道為什麼：撞名絕大多數發生在 misc_RNA（937）、snoRNA（176）、
+#         snRNA（69）彼此之間，同一個符號底下根本沒有蛋白編碼版本可以留，所以這一步不動它們。
+#         這正是「先看組成再決定怎麼處理」的價值——先看，你才知道第②步在這份資料上是小角色，
+#         真正在做事的是第③步，而第③步是依賴資料的選擇（疑慮見下）。
 #   ③ 殘餘的留表現量最高的那一列，並把這是一個「選擇」講清楚
 #
 # ⚠ 第③步要保留的疑慮，教的時候要一起講：
@@ -112,8 +117,10 @@ if ("gene_type" %in% names(rd)) {
 
 # ③ 殘餘的：留表現量最高的那一列（不是留第一個——列的順序是照 Ensembl ID 排的，跟生物學無關）
 n.before <- nrow(bulk.mtx)
-ord <- order(rowSums(bulk.mtx), decreasing = TRUE)
-bulk.mtx <- bulk.mtx[ord, ][!duplicated(rownames(bulk.mtx)[ord]), ]
+ord     <- order(rowSums(bulk.mtx), decreasing = TRUE)
+sym.ord <- rownames(bulk.mtx)[ord]
+collapsed.sym <- unique(sym.ord[duplicated(sym.ord)])   # 有列被折疊掉的那些符號，等一下要量它們的影響
+bulk.mtx <- bulk.mtx[ord, ][!duplicated(sym.ord), ]
 cat("殘餘重複依表現量折疊：", n.before, " → ", nrow(bulk.mtx), " 列",
     "（丟掉 ", n.before - nrow(bulk.mtx), " 列，方法段要寫這個數字與規則）\n", sep = "")
 # ★ 統計單位的問題，在這裡換到 Bulk 這一層。TCGA barcode 的第 4 段是樣本型別：
@@ -126,7 +133,15 @@ cat("\n== TCGA 樣本型別（01 原發／02 復發／11 正常）==\n"); print(
 sel <- which(styp == "01"); sel <- sel[!duplicated(part[sel])]          # 只留原發，每位病人一份
 cat("檔案數", length(bc), "→ 原發腫瘤", sum(styp == "01"), "→ 去重後的病人數", length(sel), "\n")
 bulk.mtx <- bulk.mtx[, sel]
+# 折疊規則到底影響了多少？不要用猜的——量出來。
+# 如果被折疊過的符號根本不在共同基因裡，那第③步那個「依賴資料的選擇」對本節結論沒有影響，
+# 你可以放心地在方法段寫一句話帶過；反過來如果佔比不小，就該認真考慮
+# 「整批排除語意不明的符號」那條更保守的路（練習 10-4）。這個檢查決定了你該用哪一種寫法。
 common <- intersect(rownames(bulk.mtx), rownames(ref))
+cat("\n== 折疊規則的影響範圍 ==\n")
+cat("Bulk 與單細胞參考的共同基因：", length(common), "\n", sep = "")
+cat("被折疊過的符號 ", length(collapsed.sym), " 個，其中進到共同基因的：",
+    sum(collapsed.sym %in% common), " 個\n", sep = "")
 ## TODO ▶ 反卷積的參考用哪一層型別、哪一欄當樣本？（Q3 頁 75）
 est <- music_prop(bulk.mtx = bulk.mtx[common, ], sc.sce = ref[common, ], clusters = "____", samples = "____")
 prop <- as.data.frame(est$Est.prop.weighted); write.csv(prop, "output/tables/10_deconv_tcga_gbm.csv")
@@ -138,6 +153,8 @@ prop <- as.data.frame(est$Est.prop.weighted); write.csv(prop, "output/tables/10_
 clin <- as.data.frame(colData(bulk))[rownames(prop), ]
 clin$time  <- ifelse(clin$vital_status == "Dead", clin$days_to_death, clin$days_to_last_follow_up) / 30.4
 clin$event <- as.integer(clin$vital_status == "Dead")
+# vital_status 有第三類 Not Reported（本例 1 位）。上面這兩行等於把它當成「存活、設限」處理，
+# 這是可接受的預設，但它是一個決定不是事實——人數多的時候要單獨列出來或做敏感度分析。
 # 時間是 NA 的人會被 coxph 默默刪掉。刪掉誰要先看一眼：
 # 如果 NA 集中在還活著的人（days_to_last_follow_up 沒填），刪掉之後就只剩死亡的人，
 # KM 曲線會被系統性拉低——那是選擇性刪除，不是隨機遺漏。
@@ -168,14 +185,17 @@ print(survdiff(Surv(time, event) ~ imm_hi, data = clin))                    # lo
 print(summary(coxph(Surv(time, event) ~ imm_pct + age_at_index, data = clin)))  # 主要分析：連續
 print(summary(coxph(Surv(time, event) ~ imm_hi  + age_at_index, data = clin)))  # 對照：二分
 # 實際分析還要調整 MGMT 甲基化、IDH 狀態；免疫比例也受腫瘤純度影響，正式報告要做敏感度分析。
-# ⚠ 下面這組實測數字是「留第一個」那一版跑出來的。2026-09-11 改成三步折疊之後，
-#   保留的基因列會變，MuSiC 的比例也會微幅改變——HR 與 p 值待重跑後更新。
-#   病人數（229／227 事件）不受影響，那是樣本層的事。
-# 本例實測：391 個檔案 → 372 份原發 → 去重後 284 位病人 → 229 位可分析（227 個死亡事件）。
-#   免疫總比例（二分）HR 1.10（95% CI 0.85–1.44），log-rank p = 0.5，Cox p = 0.46
-#     → 在 complete-case 子集裡看不出關聯（探索性，理由見上面的 censoring 說明）
-#                     （連續版的 HR 這一版新增，重跑後把數字補進來）
-#   年齡       HR 1.03/歲（1.02–1.04），p = 1.8e-06                       → 陽性對照有出來
+# 本例實測（2026-09-11，三步折疊版；R 4.4.1 / MuSiC 1.0.0 / TCGAbiolinks 2.32.0）：
+#   重複符號   1,233 列 / 60,660；_PAR_Y 44；依註解拆掉 7 列；殘餘 1,226 列依表現量折疊
+#              → 60,653 → 59,427 列。共同基因 MuSiC 實際用了 17,304 個、5 個型別
+#   病人流程   391 個檔案 → 372 份原發 → 去重後 284 位病人 → 229 位可分析（227 個死亡事件）
+#   免疫總比例（連續，主要分析）HR 1.006／百分點（95% CI 0.991–1.022），p = 0.45
+#   免疫總比例（二分，對照）    HR 1.105（95% CI 0.850–1.437），p = 0.46；log-rank p = 0.5
+#     → 兩種切法結論一致：在 complete-case 子集裡看不出關聯
+#       （探索性，理由見上面的 censoring 說明；二分版只用來畫 KM，不當主要分析）
+#   年齡       HR 1.028/歲（1.016–1.039），p = 1.6e-06                    → 陽性對照有出來
+#   ⚠ 換一版折疊規則（例如練習 10-4 的「整批排除」）這些數字會微幅改變，
+#     但只要「折疊規則的影響範圍」那個檢查印出來的數字小，結論方向不會因此翻轉。
 # 陽性對照有出來仍然很重要，但它能說的有限度：
 #   能說 → 已知的年齡效應被偵測到，支持臨床欄位、時間單位、病人對接與模型設定大致合理，
 #          免疫比例的 null 也不是單純因為程式整個失效。
@@ -195,10 +215,14 @@ sessionInfo()
 #  10-2 在 Cox 模型加入 age 之後，imm_pct 的 HR 變化多少？這代表什麼？
 #  10-3 參考組（sc 端）把 Other 拆成 Astrocyte / OPC / Neuron 重跑：Immune 的估計比例變多少？
 #       反卷積對參考的敏感度告訴你什麼？
-#  10-4 §1 的重複 symbol：先用 rowData(bulk) 看這些重複是什麼（有幾個是 _PAR_Y？有幾個是
-#       蛋白編碼撞上假基因／lncRNA？）。接著把「留第一個」換成「留表現量最高的那一列」重跑反卷積，
-#       免疫比例差多少？兩個延伸問題：(a) 如果改成 rowsum() 加總，哪一類重複會被加錯、為什麼？
-#       (b) 有人主張「全程用 Ensembl ID 就不會有這個問題」——看一下 §1 的 intersect 那一行，
+#  10-4 §1b 的三步折疊，第③步是「依賴資料的選擇」。把它換成兩種替代做法各跑一次，
+#       比較免疫比例（相關係數＋最大差值）與 Cox 的 HR：
+#       (a) 最偷懶的版本：!duplicated() 留第一個（列序照 Ensembl ID，等於隨機挑）。
+#       (b) 最保守的版本：把殘餘撞名的符號整批排除，不留任何一列。
+#       三者差多少？差很小的話，原因是什麼（提示：看 §1 印出的「折疊規則的影響範圍」）？
+#       如果差很小，方法段還需要寫這一段嗎——為什麼「影響小」本身也是要報告的結果？
+#       兩個延伸問題：(c) 如果改成 rowsum() 加總，哪一類重複會被加錯、為什麼？
+#       (d) 有人主張「全程用 Ensembl ID 就不會有這個問題」——看一下 §1 的 intersect 那一行，
 #       這個主張在本節成立嗎？要成立的話，還得多做什麼？
 #  進階 用 BayesPrism 重做 §1，比較兩種反卷積估的免疫比例（相關係數、Bland–Altman 圖）。
 # =====================================================================
