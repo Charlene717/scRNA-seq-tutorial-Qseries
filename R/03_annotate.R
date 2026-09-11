@@ -50,7 +50,9 @@ ggsave("output/figs/03_dotplot_panel.png", p, width = 16, height = 6, dpi = 150,
 markers <- FindAllMarkers(gbm, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.5)
 top5 <- markers |> group_by(cluster) |> slice_max(avg_log2FC, n = 5) |>
         select(cluster, gene, avg_log2FC, pct.1, pct.2, p_val_adj)
-print(top5, n = 60)                                   # 看表順序：log2FC → pct.1/pct.2 → p
+print(top5, n = Inf)                                  # 看表順序：log2FC → pct.1/pct.2 → p
+# n = Inf 不是隨手寫的：13 群 × 5 個 = 65 列，寫 n = 60 會把最後一群整個截掉，
+# 而你正是要靠這張表替每一群命名——少看一群就是少命名一群。
 write.csv(markers, "output/tables/03_markers.csv", row.names = FALSE)
 
 ## ---- 3. singler ---------------------------------------------------- Q2 頁 48–51
@@ -62,6 +64,10 @@ xval <- data.frame(cluster = rownames(pred), SingleR = pred$labels,
                    delta   = round(pred$delta.next, 2))         # delta 小 = 第一、二名分不開
 print(xval)
 gbm$singler <- unname(setNames(pred$labels, rownames(pred))[as.character(gbm$seurat_clusters)])   # 群標籤寫回每顆細胞（要 unname：Seurat v5 會把名字當細胞名）
+# 本例的讀法：寡樹突群被叫成 Astrocyte、小膠質群被叫成 Macrophage——那不是 SingleR 判錯，
+# 是 HPCA 這個參考集裡沒有這兩個標籤，它只能給「現有選項裡最接近的」。
+# 所以 SingleR 能當第二條獨立證據的，只有參考集真的涵蓋的型別（本例：巨噬、單核、T 細胞、基質）；
+# 參考集沒有的型別，它給的名字只能當線索，不能當佐證。
 # 交叉驗證：把手動 marker 的判斷填進去（看 03_dotplot_panel.png）
 # 免疫 / 寡樹突 / 血管：兩項獨立證據一致即可接受。
 # 膠質群：SingleR 會給 Astrocyte / Neural progenitor / Neurons —— 那不是答案，是提醒（參考集裡沒有 GBM 惡性細胞）。

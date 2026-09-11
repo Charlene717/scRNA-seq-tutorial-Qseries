@@ -1,7 +1,7 @@
 # =====================================================================
 # 03_annotate.R — 練習腳本 3：譜系標誌基因、marker、SingleR、命名、惡性狀態分數
 #
-# 對應影片：Q2 頁 38–59（§1 譜系標誌與 marker 面板、§2 FindAllMarkers 與篩選、§3 SingleR、§4 命名、§4b 免疫亞群、§5 Neftel 分數與三種算法、§5b 品質檢查、§6 交付與存檔）
+# 對應影片：Q2 頁 38–64（§1 譜系標誌與 marker 面板、§2 FindAllMarkers 與篩選、§3 SingleR、§4 命名、§4b 免疫亞群、§5 Neftel 分數與三種算法、§5b 品質檢查、§6 交付與存檔）
 # 輸入：output/rds/02_gbm_clustered.rds（02_cluster.R）
 # 輸出：output/rds/03_gbm_annotated.rds、output/tables/03_markers.csv（另有 03_immune_markers、03_composition）
 # 時間：約 5–10 分鐘（SingleR 首次下載參考集約 1 GB，之後有快取）
@@ -23,7 +23,7 @@ if (!is.null(gbm$RNA_snn_res.0.5) &&
        "  所有 FindClusters()（含 seed42 / k30 穩定性檢查）之後才寫回的。", call. = FALSE)
 cat("分群數：", nlevels(Idents(gbm)), "群\n")
 
-## ---- 1. gates-and-panel -------------------------------------------- Q2 頁 38–40
+## ---- 1. gates-and-panel -------------------------------------------- Q2 頁 43–45
 # 四個譜系標誌基因：先劃四個主要類群
 gates <- c("PTPRC",   # 免疫
            "SOX2",    # 膠質／惡性（正常星狀、OPC 也會亮）
@@ -50,31 +50,37 @@ p <- DotPlot(gbm, features = panel, cluster.idents = TRUE) + RotatedAxis() +
 ggsave("output/figs/03_dotplot_panel.png", p, width = 16, height = 6, dpi = 150, bg = "white")
 # 看圖：沿對角線一塊塊亮起來嗎？PTPRC 亮在幾群（那是免疫類群）？MKI67 疊在哪幾群上？
 
-## ---- 2. markers ---------------------------------------------------- Q2 頁 41–42
-## TODO ▶ FindAllMarkers 的三個門檻各是什麼意思？（Q2 頁 41–42）
+## ---- 2. markers ---------------------------------------------------- Q2 頁 46–47
+## TODO ▶ FindAllMarkers 的三個門檻各是什麼意思？（Q2 頁 46–47）
 markers <- FindAllMarkers(gbm, only.pos = ____, min.pct = ____, logfc.threshold = ____)
 top5 <- markers |> group_by(cluster) |> slice_max(avg_log2FC, n = 5) |>
         select(cluster, gene, avg_log2FC, pct.1, pct.2, p_val_adj)
-print(top5, n = 60)                                   # 看表順序：log2FC → pct.1/pct.2 → p
+print(top5, n = Inf)                                  # 看表順序：log2FC → pct.1/pct.2 → p
+# n = Inf 不是隨手寫的：13 群 × 5 個 = 65 列，寫 n = 60 會把最後一群整個截掉，
+# 而你正是要靠這張表替每一群命名——少看一群就是少命名一群。
 write.csv(markers, "output/tables/03_markers.csv", row.names = FALSE)
 
-## ---- 3. singler ---------------------------------------------------- Q2 頁 43–46
+## ---- 3. singler ---------------------------------------------------- Q2 頁 48–51
 library(SingleR); library(celldex)
 ref  <- celldex::HumanPrimaryCellAtlasData()          # 首次下載約 1 GB，之後快取
 pred <- SingleR(test = GetAssayData(gbm, layer = "data"), ref = ref,
-                ## TODO ▶ SingleR 用粗標籤還是細標籤？（Q2 頁 43）
+                ## TODO ▶ SingleR 用粗標籤還是細標籤？（Q2 頁 48–51）
                 labels = ref$____, clusters = gbm$seurat_clusters)
 xval <- data.frame(cluster = rownames(pred), SingleR = pred$labels,
                    delta   = round(pred$delta.next, 2))         # delta 小 = 第一、二名分不開
 print(xval)
 gbm$singler <- unname(setNames(pred$labels, rownames(pred))[as.character(gbm$seurat_clusters)])   # 群標籤寫回每顆細胞（要 unname：Seurat v5 會把名字當細胞名）
+# 本例的讀法：寡樹突群被叫成 Astrocyte、小膠質群被叫成 Macrophage——那不是 SingleR 判錯，
+# 是 HPCA 這個參考集裡沒有這兩個標籤，它只能給「現有選項裡最接近的」。
+# 所以 SingleR 能當第二條獨立證據的，只有參考集真的涵蓋的型別（本例：巨噬、單核、T 細胞、基質）；
+# 參考集沒有的型別，它給的名字只能當線索，不能當佐證。
 # 交叉驗證：把手動 marker 的判斷填進去（看 03_dotplot_panel.png）
 # 免疫 / 寡樹突 / 血管：兩項獨立證據一致即可接受。
 # 膠質群：SingleR 會給 Astrocyte / Neural progenitor / Neurons —— 那不是答案，是提醒（參考集裡沒有 GBM 惡性細胞）。
 # 惡性與否需要基因體層級的證據（CNV 推斷、突變基因型）加上跨病人專屬性；單一病人的資料湊不齊，
 # 所以本腳本的膠質群一律停在 (undetermined)，這是這份資料能給的最後結論。
 
-## ---- 4. name -------------------------------------------------------- Q2 頁 47
+## ---- 4. name -------------------------------------------------------- Q2 頁 52
 # ★ 依照「你自己的」DotPlot 與 SingleR 結果填寫；下面只是範例對應，每份資料的編號都不同 ★
 # 範例對應（seed = 1234、Seurat 5.3、npc = 25、res 0.5、k = 20 跑 GBM 5k 得到的 13 群）
 # ※ 這是「範例」，不是答案：務必先看你自己的 03_dotplot_panel.png 與上面的 xval 表再定案。
@@ -108,7 +114,7 @@ if (length(unassigned)) { warning("這些群還沒命名，先標 Unassigned："
 qc.tab    <- read.csv("output/tables/02_per_cluster_qc.csv")
 cand.dbl  <- as.character(qc.tab$cluster[qc.tab$dbl > 0.5])   # 候選：只是「值得去查」
 # 偵測不等於決定：候選與確認分成兩個變數，換一份資料時就不會有東西被自動刪掉。
-## TODO ▶ 回 02 §4b 看三項診斷，哪幾群真的三項全中？只有全中的才填進來（Q2 頁 22）
+## TODO ▶ 回 02 §4b 看三項診斷，哪幾群真的三項全中？只有全中的才填進來（Q2 頁 36）
 conf.dbl  <- c(____)
 
 extra <- setdiff(cand.dbl, conf.dbl)
@@ -130,7 +136,7 @@ p <- DimPlot(gbm, label = TRUE, repel = TRUE) + NoLegend()
 ggsave("output/figs/03_umap_annotated.png", p, width = 7, height = 6, dpi = 150, bg = "white")
 table(gbm$celltype)
 
-## ---- 4b. immune-subsets --------------------------------------------- Q2 頁 48–50
+## ---- 4b. immune-subsets --------------------------------------------- Q2 頁 53–55
 # 層級式註釋：免疫類群單獨拿出來，整條流程重跑（subset 之後一定重算 HVG 與 PCA）
 imm <- subset(gbm, celltype %in% c("Macrophage", "Microglia", "T cell"))
 ## TODO ▶ 挑幾個高變異基因？（Q2 頁 25）
@@ -148,7 +154,7 @@ imm.panel <- c("P2RY12", "TMEM119", "CX3CR1",                       # 小膠質
 imm.panel <- intersect(imm.panel, rownames(imm))
 p <- DotPlot(imm, features = imm.panel) + RotatedAxis()
 ggsave("output/figs/03_imm_dotplot.png", p, width = 11, height = 5, dpi = 150, bg = "white")
-## TODO ▶ FindAllMarkers 的三個門檻各是什麼意思？（Q2 頁 41–42）
+## TODO ▶ FindAllMarkers 的三個門檻各是什麼意思？（Q2 頁 46–47）
 imm.markers <- FindAllMarkers(imm, only.pos = ____, min.pct = ____, logfc.threshold = ____)
 write.csv(imm.markers, "output/tables/03_immune_markers.csv", row.names = FALSE)
 # 對照 DotPlot 標上第二層名稱（編號依你的資料）：
@@ -175,7 +181,7 @@ gbm$celltype_l3 <- dplyr::if_else(grepl("Cycling", gbm$celltype), "Cycling", NA_
 table(gbm$celltype_l1)
 table(gbm$celltype_l1, gbm$celltype_l3, useNA = "ifany")   # 確認 Cycling 沒有被吃進 Glial
 
-## ---- 5. malignant-states ------------------------------------------- Q2 頁 51–53
+## ---- 5. malignant-states ------------------------------------------- Q2 頁 56–58
 # Neftel et al. 2019 (Cell) 四種狀態的 meta-module。★ 完整基因集請用論文 Table S2（每組 50 個）；
 # 這裡列出每組前 12 個作示範，練習 3-3 請你補完整。
 # 注意方向性：這四種狀態是 Neftel 在「已經確認是惡性」的細胞裡定義出來的。分數只說明這群細胞
@@ -211,7 +217,7 @@ if (requireNamespace("UCell", quietly = TRUE)) {
   print(cor(glial$MES1, glial$MES1_UCell))               # 三種算法排序通常高度一致
 }
 
-## ---- 5b. annotation-qc ---------------------------------------------- Q2 頁 54–56
+## ---- 5b. annotation-qc ---------------------------------------------- Q2 頁 59–60
 round(prop.table(table(gbm$celltype, gbm$singler), 1), 2)          # 交叉表（需先把 SingleR 群標籤寫回 gbm$singler）
 top5 <- markers |> group_by(cluster) |> slice_max(avg_log2FC, n = 5)
 gbm <- ScaleData(gbm, features = unique(c(VariableFeatures(gbm), top5$gene)))   # 熱圖用的基因要先 scale 過
@@ -227,7 +233,7 @@ sil <- cluster::silhouette(as.integer(Idents(gbm)[cells.sil]),
                            dist(Embeddings(gbm, "pca")[cells.sil, 1:20]))
 tapply(sil[, "sil_width"], Idents(gbm)[cells.sil], mean)            # < 0.1 的群存疑
 
-## ---- 6. deliverables-and-save --------------------------------------- Q2 頁 58–59
+## ---- 6. deliverables-and-save --------------------------------------- Q2 頁 63–64
 library(patchwork)
 p1 <- DimPlot(gbm, group.by = "celltype", label = TRUE, repel = TRUE) + NoLegend()
 p2 <- DotPlot(gbm, features = panel, group.by = "celltype") + RotatedAxis()
