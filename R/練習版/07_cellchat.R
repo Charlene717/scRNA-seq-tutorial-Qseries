@@ -1,7 +1,7 @@
 # =====================================================================
 # 07_cellchat.R — 練習腳本 7：細胞通訊（CellChat）——每個樣本各跑一次、六種圖、兩條件比較、LIANA 交叉驗證
 #
-# 對應影片：Q3 頁 54–65（§1 跑一次 CellChat、§2 路徑層級與六種圖、§3 兩條件比較、§4 LIANA）
+# 對應影片：Q3 頁 58–71（§1 跑一次 CellChat、§2 路徑層級與六種圖、§3 兩條件比較、§4 LIANA）
 # 輸入：output/rds/06_gbm4_final.rds（06a_pseudobulk_gsea.R；含 malignant 標籤與 type 欄）
 # 輸出：output/rds/07_cellchat/<patient>_<tissue>_min<MIN.CELLS>.rds、output/tables/07_liana_top500.csv、output/figs/07_*.pdf
 # 時間：每個樣本約 5–15 分鐘（8 個樣本，建議先跑一位病人）；跑過的樣本會存成 rds，
@@ -20,7 +20,7 @@
 # ---------------------------------------------------------------------
 library(Seurat); library(dplyr); library(ggplot2); library(CellChat); library(patchwork)
 set.seed(1234)
-## TODO ▶ 少於幾顆細胞的群不參與通訊分析？低於門檻的群是整組被移除，不是畫得淡一點（Q3 頁 56）
+## TODO ▶ 少於幾顆細胞的群不參與通訊分析？低於門檻的群是整組被移除，不是畫得淡一點（Q3 頁 60–61）
 MIN.CELLS <- ____        # CellChat 建網時的細胞數門檻：低於這個數的群「整組」被移除，不是畫得淡一點
 REUSE.RDS <- TRUE      # 已經跑過的樣本直接讀 output/rds/07_cellchat/*.rds（每個樣本 5–15 分鐘，重跑一輪要一小時）
                        # 安全性：只要 06 的輸出比快取新，就自動重跑那個樣本——不會像 inferCNV 那樣默默用舊結果
@@ -64,7 +64,7 @@ if (length(imm.cells)) {
 
 table(gbm4$cc_label, paste(gbm4$patient, gbm4$tissue))                      # 每群 ≥ MIN.CELLS 顆才進得了網路
 
-## ---- 1. run-per-sample --------------------------------------------- Q3 頁 55–56
+## ---- 1. run-per-sample --------------------------------------------- Q3 頁 60–61
 run_cc <- function(obj, label = "cc_label") {
   obj$samples <- factor(paste(obj$patient, obj$tissue, sep = "_"))          # CellChat v2 要求 meta 有 samples 欄
   cc <- createCellChat(object = obj, group.by = label, assay = "RNA")       # 用 data 層（log-normalized）
@@ -72,7 +72,7 @@ run_cc <- function(obj, label = "cc_label") {
   cc <- subsetData(cc)
   cc <- identifyOverExpressedGenes(cc)
   cc <- identifyOverExpressedInteractions(cc)
-  ## TODO ▶ CellChat 用什麼統計量代表一群的表現？（Q3 頁 55–56）
+  ## TODO ▶ CellChat 用什麼統計量代表一群的表現？（Q3 頁 60–61）
   # population.size = TRUE 不是「把群大小的影響校正掉」，方向剛好相反：它把族群的相對豐度
   # 納入通訊機率，所以細胞多的群本來就會拿到比較強的整體訊號。兩個條件組成差很多時，
   # 這個選項會放大組成差異——練習 7-4 要你各跑一次 TRUE / FALSE 比較。
@@ -122,7 +122,7 @@ cc <- cc.all[[DEMO]]                                                        # �
 DEMO.p <- sub("_[^_]*$", "", DEMO); DEMO.t <- sub(".*_", "", DEMO)
 cat("\n六種圖的示範樣本：", DEMO, "\n")
 
-## ---- 2. six-plots --------------------------------------------------- Q3 頁 57–62
+## ---- 2. six-plots --------------------------------------------------- Q3 頁 62–67
 groupSize <- as.numeric(table(cc@idents))
 pdf("output/figs/07_1_circle.pdf", width = 10, height = 5); par(mfrow = c(1, 2), xpd = TRUE)
 netVisual_circle(cc@net$count,  vertex.weight = groupSize, weight.scale = TRUE, label.edge = FALSE, title.name = "Number of interactions")
@@ -165,7 +165,7 @@ feats <- intersect(c("SPP1", "CD44"), rownames(gbm4))
 if (length(feats)) VlnPlot(subset(gbm4, patient == DEMO.p & tissue == DEMO.t),
                            features = feats, group.by = "cc_label", pt.size = 0)
 
-## ---- 3. compare-conditions ------------------------------------------ Q3 頁 63–64
+## ---- 3. compare-conditions ------------------------------------------ Q3 頁 68–70
 PAIR <- "BT_S2"                                                             # 同一位病人的核心 vs 邊緣
 need <- paste0(PAIR, c("_Tumor", "_Periphery"))
 if (!all(need %in% names(cc.all)))
@@ -241,7 +241,7 @@ cat("兩個部位都有 CellChat 結果的病人：", paste(pairs.ok, collapse =
 # 對每位病人重複 §3，收集 rankNet 的顯著路徑，取交集
 # rank.list <- lapply(patients, function(p) rankNet(mergeCellChat(list(cc.all[[paste0(p,"_Tumor")]], cc.all[[paste0(p,"_Periphery")]]), add.names = c("Core","Periphery")), mode = "comparison", do.stat = TRUE, return.data = TRUE)$signaling.contribution)
 
-## ---- 4. liana-crosscheck --------------------------------------------- Q3 頁 65
+## ---- 4. liana-crosscheck --------------------------------------------- Q3 頁 71
 if (requireNamespace("liana", quietly = TRUE)) {
   library(liana)
   obj <- subset(gbm4, patient == DEMO.p & tissue == DEMO.t); Idents(obj) <- "cc_label"

@@ -1,7 +1,7 @@
 # =====================================================================
 # 05_infercnv.R — 練習腳本 5：inferCNV 惡性判定、CNV 分數與相關、三角驗證、與作者標籤比對
 #
-# 對應影片：Q3 頁 20–26（§1 輸入與執行、§2 兩個數字、§3 三角驗證）
+# 對應影片：Q3 頁 21–28（§1 輸入與執行、§2 兩個數字、§3 三角驗證）
 # 輸入：output/rds/04_gbm4_unintegrated.rds（04_multipatient.R；用「未整合」那份）
 # 輸出：output/rds/05_infercnv/（inferCNV 原生輸出）、output/rds/05_gbm4_malignant.rds、output/figs/05_infercnv*.png
 # 時間：inferCNV 約 10–30 分鐘（denoise、無 HMM；視機器而定）
@@ -17,7 +17,7 @@ library(Seurat); library(dplyr); library(ggplot2)
 set.seed(1234)
 gbm4 <- readRDS("output/rds/04_gbm4_unintegrated.rds")
 
-## ---- 1. run-infercnv ----------------------------------------------- Q3 頁 20–22
+## ---- 1. run-infercnv ----------------------------------------------- Q3 頁 22–24
 # 前置檢查：inferCNV 依賴 rjags，而 rjags 需要「系統層級」安裝 JAGS 4.x（不是 R 套件）
 #   Windows：到 https://sourceforge.net/projects/mcmc-jags/files/ 下載 JAGS-4.x.y.exe 安裝
 #   macOS  ：brew install jags      Linux：sudo apt install jags
@@ -28,7 +28,7 @@ if (inherits(try(suppressPackageStartupMessages(library(rjags)), silent = TRUE),
 }
 library(infercnv)
 # (a) 註釋檔：參考組 = 確定正常的細胞（免疫、寡樹突）；觀察組按病人分開
-## TODO ▶ 誰是「確定正常」的參考組？為什麼不是星狀細胞？（Q3 頁 20、22）
+## TODO ▶ 誰是「確定正常」的參考組？為什麼不是星狀細胞？（Q3 頁 22–24）
 # 參考組是整張熱圖的基準線，要用最保守的標準挑：混進 doublet 或惡性細胞，等於參考本身帶了
 # CNV 訊號，所有細胞的振幅會被壓低。這份是 Smart-seq2（doublet 率低）；換 10x 資料時，
 # 參考組要只留 doublet_status == "Keep" 的細胞（欄位由 03 建立，做法見 02 §4c）。
@@ -69,7 +69,7 @@ out.dir <- "output/rds/05_infercnv"       # inferCNV 的原生輸出整包放在
 
 # 參數先寫成變數，run() 再引用同一組——指紋跟真正跑的參數綁在一起，改了一定會被抓到。
 # 寫成兩份（一份給 run()、一份給指紋）遲早會不同步，那時檢查就形同虛設。
-## TODO ▶ Smart-seq2 與 10x 的 cutoff 差 10 倍，這份資料該用哪個？（Q3 頁 22）
+## TODO ▶ Smart-seq2 與 10x 的 cutoff 差 10 倍，這份資料該用哪個？（Q3 頁 22–24）
 CUTOFF        <- ____
 CLUSTER.GROUP <- TRUE     # 每位病人各自聚類
 DENOISE       <- TRUE
@@ -158,7 +158,7 @@ if (CLEAN.INTERMEDIATE) {
   }
 }
 
-## ---- 2. cnv-score-cor ---------------------------------------------- Q3 頁 23–24
+## ---- 2. cnv-score-cor ---------------------------------------------- Q3 頁 25–26
 # CNV 矩陣直接從 run() 回傳的物件拿，不要去讀 infercnv.observations.txt：
 #   那兩個文字檔只有在 plot_cnv(write_expr_matrix = TRUE) 時才會寫出來，run() 預設不寫，
 #   讀了會得到「無法開啟連接」。物件裡的 expr.data 就是同一份資料，而且省掉幾百 MB 的文字讀寫。
@@ -208,7 +208,7 @@ ggsave("output/figs/05_cnv_scatter.png", p, width = 8, height = 6, dpi = 150, bg
 # 看圖：右上（兩條虛線之外）= 惡性；點線以下 = 正常；中間那條帶 = 不確定。
 # 分位數只是起點：如果你的圖上兩群之間有明顯的谷，把線移到谷底會比分位數更好。
 
-## ---- 3. triangulate ------------------------------------------------ Q3 頁 25–26
+## ---- 3. triangulate ------------------------------------------------ Q3 頁 27–28
 # 三條閾值在 §2 已由參考組算出（s.hi / c.hi / c.lo）。覺得不合就回 §2 調，這裡只做判定。
 gbm4$malignant <- with(gbm4@meta.data, ifelse(
   cnv.score > s.hi & cnv.cor > c.hi, "malignant",

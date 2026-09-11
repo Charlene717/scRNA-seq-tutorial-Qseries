@@ -1,7 +1,7 @@
 # =====================================================================
 # 09_activity.R — 練習腳本 9：路徑與轉錄因子活性（decoupleR / PROGENy、SCENIC）
 #
-# 對應影片：Q3 頁 70–72（§1 PROGENy 路徑活性與條件比較、§2 SCENIC regulon）
+# 對應影片：Q3 頁 76–78（§1 PROGENy 路徑活性與條件比較、§2 SCENIC regulon）
 # 輸入：output/rds/06_gbm4_final.rds
 # 輸出：output/figs/09_*.pdf、output/tables/09_progeny_*.csv
 # 時間：decoupleR 約 2 分鐘；SCENIC（pySCENIC，Python）數小時，為選配
@@ -21,9 +21,9 @@ gbm4[["RNA"]] <- JoinLayers(gbm4[["RNA"]])
 if (!"data" %in% Layers(gbm4[["RNA"]])) gbm4 <- NormalizeData(gbm4)
 for (d in c("output/figs", "output/rds", "output/tables")) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
-## ---- 1. pathway-activity（decoupleR / PROGENy）---------------------- Q3 頁 71–72
+## ---- 1. pathway-activity（decoupleR / PROGENy）---------------------- Q3 頁 77–78
 library(decoupleR)
-## TODO ▶ PROGENy 用哪個物種、每條路徑取前幾個 footprint 基因？（Q3 頁 71）
+## TODO ▶ PROGENy 用哪個物種、每條路徑取前幾個 footprint 基因？（Q3 頁 77–78）
 net <- get_progeny(organism = "____", top = ____)
 mat <- as.matrix(LayerData(gbm4, layer = "data"))
 act <- run_mlm(mat = mat, net = net, .source = "source", .target = "target", .mor = "weight", minsize = 5)
@@ -79,7 +79,7 @@ if (sum(ok) >= 3) {
 #         同一套生物學，換個統計單位就從看得到變成看不到——差別不在生物學。
 write.csv(pa, "output/tables/09_progeny_hypoxia_by_sample.csv", row.names = FALSE)
 DefaultAssay(gbm4) <- "RNA"
-## ---- 2. scenic（選配）----------------------------------------------- Q3 頁 72
+## ---- 2. scenic（選配）----------------------------------------------- Q3 頁 78
 # SCENIC（pySCENIC，Python）：R 端匯出 loom，跑完讀回
 #   library(SeuratDisk); SaveLoom(gbm4, "output/rds/09_gbm4.loom")   # 或 loomR / anndata
 #   pyscenic grn output/09_gbm4.loom hs_hgnc_tfs.txt -o output/09_adj.csv --num_workers 8

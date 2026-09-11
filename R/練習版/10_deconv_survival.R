@@ -1,7 +1,7 @@
 # =====================================================================
 # 10_deconv_survival.R — 練習腳本 10：反卷積與存活分析（MuSiC + TCGA-GBM）——把 n = 4 帶到數百位病人
 #
-# 對應影片：Q3 頁 73–75（§1 反卷積、§2 KM 與 Cox）
+# 對應影片：Q3 頁 79–82（§1 反卷積、§2 KM 與 Cox）
 # 輸入：output/rds/06_gbm4_final.rds；TCGA-GBM Bulk（TCGAbiolinks 自動下載，需連網）
 # 輸出：output/tables/10_deconv_tcga_gbm.csv、output/figs/10_km_*.pdf
 # 時間：TCGA 下載約 10 分鐘（僅第一次），其餘約 5 分鐘
@@ -18,7 +18,7 @@ set.seed(1234)
 gbm4 <- readRDS("output/rds/06_gbm4_final.rds")
 for (d in c("output/figs", "output/rds", "output/tables")) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
-## ---- 1. deconvolution ----------------------------------------------- Q3 頁 75
+## ---- 1. deconvolution ----------------------------------------------- Q3 頁 82
 library(MuSiC); library(TCGAbiolinks); library(SummarizedExperiment); library(survival); library(survminer)
 ref <- as.SingleCellExperiment(JoinLayers(gbm4))
 ref$celltype_l1 <- ifelse(gbm4$malignant == "malignant", "Malignant",
@@ -142,10 +142,10 @@ cat("\n== 折疊規則的影響範圍 ==\n")
 cat("Bulk 與單細胞參考的共同基因：", length(common), "\n", sep = "")
 cat("被折疊過的符號 ", length(collapsed.sym), " 個，其中進到共同基因的：",
     sum(collapsed.sym %in% common), " 個\n", sep = "")
-## TODO ▶ 反卷積的參考用哪一層型別、哪一欄當樣本？（Q3 頁 75）
+## TODO ▶ 反卷積的參考用哪一層型別、哪一欄當樣本？（Q3 頁 82）
 est <- music_prop(bulk.mtx = bulk.mtx[common, ], sc.sce = ref[common, ], clusters = "____", samples = "____")
 prop <- as.data.frame(est$Est.prop.weighted); write.csv(prop, "output/tables/10_deconv_tcga_gbm.csv")
-## ---- 2. survival ---------------------------------------------------- Q3 頁 75
+## ---- 2. survival ---------------------------------------------------- Q3 頁 82
 # 存活：免疫細胞「總」比例的上下半
 # ⚠ 命名要跟算出來的東西一致。這裡的 prop$Immune 是所有免疫細胞合起來的比例，
 #   不是巨噬細胞比例——參考組在 §1 只分到 Immune 這一層，拆不出 TAM。
