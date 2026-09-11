@@ -133,8 +133,11 @@ cat("選到的 pK =", pK.sel, "\n")
 top3 <- head(bcmvn[order(-bcmvn$BCmetric), c("pK.num", "BCmetric")], 3)
 top3$BCmetric <- round(top3$BCmetric, 1)
 cat("BCmetric 前三名：\n"); print(top3, row.names = FALSE)
-# 判讀：第一名明顯高過第二名才算掃得乾淨；兩個峰差不多高、或曲線整體平坦，
-# 代表 pK 選得不穩，「哪幾顆是 doublet」的可信度跟著下降。
+# 判讀看的是「前三名的 pK 相不相鄰」，不是高度差幾倍：
+#   相鄰（例如 0.10 / 0.11 / 0.12）→ 單一個峰，曲線升到最高點再兩側掉下去，pK 選得穩。
+#   散在不相鄰的區段、而且高度接近（例如 0.11 與 0.25 差不多高）→ 多峰，
+#     這時「選最高的那個」只是剛好，換個 seed 或子集就可能換人，「哪幾顆是 doublet」跟著不穩。
+# 不要用「第一名比第二名高幾倍」當標準：第二名通常就是隔壁的 pK，本來就會接近。
 
 # (b) 期望 doublet 數。以下是常見的 10x 經驗法則，**不是普遍成立的生物學常數**：
 #     每「回收」1,000 顆細胞約 0.8%（索引的是回收細胞數，不是上樣細胞數）。
@@ -159,7 +162,9 @@ rm(tmp); invisible(gc())
 
 # （選配）第二種方法交叉比對：scDblFinder（Germain et al. 2021, F1000Research）。
 # 原理相近但實作獨立。兩者都是廣泛使用、且在 benchmark 中表現良好的方法——但要注意引用的邊界：
-# Xi & Li (2021) 的系統性 benchmark 比較九種方法，DoubletFinder 在其中整體表現最好之一；
+# Xi & Li (2021) 的系統性 benchmark 比較九種方法，DoubletFinder 的偵測準確度最高
+# （摘要原文：the DoubletFinder method has the best detection accuracy；
+#   同一句也說 the cxds method has the highest computational efficiency——那是準確度的第一，不是整體）；
 # 該篇**當時並未納入 scDblFinder**（是後續的 protocol extension 才加進去，且表現也很好）。
 # 所以不能從那篇推論「兩者準確度相當」——沒有那條證據鏈。能說的是：不同資料集沒有哪一種永遠最好。
 # 本課同時跑兩種，把「兩法都判為 doublet」當成比較保守的高信心子集。
@@ -181,9 +186,8 @@ if (RUN_SCDBL && requireNamespace("scDblFinder", quietly = TRUE)) {
 # 本課這份 GBM 5k 的參考結果（同一版套件下應該一樣；換 Seurat / DoubletFinder / scDblFinder
 # 的版本可能微幅不同，方向與量級不變就算對得上）：
 #   pK = 0.11；nExp = 221 → homotypic 調整後 198；DoubletFinder 標 198 顆（3.8%）。
-#   01_doubletfinder_pK.png 是「掃得乾淨」的範例。上面新增的「BCmetric 前三名」會把
-#   峰有多尖直接印出來——第一名比第二名高好幾倍，峰位才可信；接近 1 就代表 pK 不穩，
-#   「哪 198 顆是 doublet」的可信度也跟著下降。（這一版才開始印，實際倍數以你的輸出為準。）
+#   BCmetric 前三名：0.11（6518.9）、0.10（3368.4）、0.12（2029.3）——三個 pK 相鄰，
+#   是單峰、掃得乾淨的樣子，01_doubletfinder_pK.png 上看到的也是這條曲線。
 #   scDblFinder 自行找閾值後標 415 顆（7.9%），兩法交集 159 顆、一致率 94.4%。
 #
 # 判讀交叉表時注意：兩法的差異主要來自「閾值畫在哪」，不是「誰排在前面」——
