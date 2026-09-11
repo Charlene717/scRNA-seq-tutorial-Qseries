@@ -2,7 +2,8 @@
 # 00_setup.R — Q 系列（腫瘤快速上手）練習腳本 0：環境、資料下載、專案結構
 #
 # 對應影片：Q2 頁 7–8、Q3 頁 8
-# 執行方式：在 RStudio 開啟專案（.Rproj），從專案根目錄逐段執行。
+# 執行方式：照 README——新建一個 RStudio Project，把 R/ 複製進去，從專案根目錄逐段執行。
+#           （repo 裡沒有 .Rproj，它在 .gitignore 裡；專案由你自己建。）
 #           第一次執行約 10–20 分鐘（安裝套件 + 下載約 90 MB 資料）。
 #           ⚠ 跑完 00 之後建議重開 R（Session → Restart R）再跑 01。兩個理由：
 #             ① 00 的工作就是裝套件。裝完在同一個 session 裡馬上用，容易碰到
@@ -74,10 +75,9 @@ cat("Seurat", as.character(packageVersion("Seurat")), "\n")
 
 ## ---- 2. 專案結構 ---------------------------------------------------
 # 一律相對路徑；不要 setwd()。
-# 注意清單裡沒有 "R"：腳本本身就放在專案根目錄（.Rproj 所在的資料夾），再建一個 R/ 子資料夾
-# 只會多出一個空目錄讓人困惑。
+# 注意清單裡沒有 "R"：R/ 是你自己複製進來的腳本資料夾，這裡再建一個只會多出一個空目錄。
 for (d in c("data", "output", "output/figs", "output/rds", "output/tables")) dir.create(d, showWarnings = FALSE, recursive = TRUE)
-cat("工作目錄：", getwd(), "\n")   # 應該是 .Rproj 所在的資料夾；不對的話下面的相對路徑全都會跑到別的地方去
+cat("工作目錄：", getwd(), "\n")   # data/ 與 output/ 會建在這一層；不對的話下面的相對路徑全都會跑到別的地方去
 
 ## ---- 3. 資料 (1)：10x GBM 5k --------------------------------------
 # 官方頁面：10x Genomics Datasets → "Human Glioblastoma Multiforme: 3'v3 Whole Transcriptome Analysis"
