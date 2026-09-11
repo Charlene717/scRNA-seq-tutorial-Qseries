@@ -3,7 +3,7 @@
 #
 # 對應影片：Q2 頁 8–22（§0 SoupX 選做、§1 讀檔與初步檢視、§2 三指標、§3 MAD 三條線、§4 DoubletFinder）
 # 輸入：data/gbm5k/filtered_feature_bc_matrix/（由 00_setup.R 準備）
-# 輸出：output/rds/01_gbm_raw.rds（過濾前）、output/rds/01_gbm_qc.rds（過濾後 + doublet 標記）
+# 輸出：output/rds/01_gbm_raw.rds（三條 QC 線之前）、output/rds/01_gbm_qc.rds（過濾後 + doublet 標記）
 # 時間：約 8–15 分鐘（DoubletFinder 的 pK 掃描本身就要數分鐘）
 # =====================================================================
 # ---------------------------------------------------------------------
@@ -59,7 +59,9 @@ cnt[intersect(c("PTPRC", "SOX2", "MBP"), rownames(cnt)), 1:5]   # 先 intersect�
 ## TODO ▶ 粒線體基因的前綴是什麼？人與鼠不同（Q2 頁 9）
 gbm[["percent.mt"]] <- PercentageFeatureSet(gbm, pattern = "____")
 gbm[["percent.rb"]] <- PercentageFeatureSet(gbm, pattern = "^RP[SL]") # 核糖體，供參考
-saveRDS(gbm, "output/rds/01_gbm_raw.rds")                    # 過濾前先存：截斷之後回不去
+# 三條 QC 線之前先存一份：截斷之後回不去。
+# （注意它不是「完全沒動過」：上面 CreateSeuratObject 的 min.cells / min.features 已經套用了。）
+saveRDS(gbm, "output/rds/01_gbm_raw.rds")
 
 p <- VlnPlot(gbm, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"),
              ncol = 3, pt.size = 0.05)
@@ -131,11 +133,17 @@ p <- ggplot(bcmvn, aes(pK.num, BCmetric)) + geom_line() + geom_point(size = 1.5)
      labs(x = "pK", y = "BCmetric", title = sprintf("DoubletFinder pK sweep (selected pK = %s)", pK.sel))
 ggsave("output/figs/01_doubletfinder_pK.png", p, width = 7, height = 4, dpi = 150, bg = "white")
 cat("選到的 pK =", pK.sel, "\n")
-# 看圖：BCmetric 有一個明確的單峰才算掃得乾淨；平坦或多峰代表資料結構弱，pK 的選擇會不穩。
+# 「峰夠不夠尖」用看的不準，把前三名印出來，方法段才寫得出數字。
+top3 <- head(bcmvn[order(-bcmvn$BCmetric), c("pK.num", "BCmetric")], 3)
+top3$BCmetric <- round(top3$BCmetric, 1)
+cat("BCmetric 前三名：\n"); print(top3, row.names = FALSE)
+# 判讀：第一名明顯高過第二名才算掃得乾淨；兩個峰差不多高、或曲線整體平坦，
+# 代表 pK 選得不穩，「哪幾顆是 doublet」的可信度跟著下降。
 
-# (b) 期望 doublet 數。以下是常見的 10x 上樣經驗法則，**不是普遍成立的生物學常數**：
-#     每裝載 1,000 顆細胞約 0.8%。實際的 multiplet 率會隨平台世代、化學版本、
-#     回收細胞數目標與上樣濃度變動，你的實驗條件不同就要換數字。
+# (b) 期望 doublet 數。以下是常見的 10x 經驗法則，**不是普遍成立的生物學常數**：
+#     每「回收」1,000 顆細胞約 0.8%（索引的是回收細胞數，不是上樣細胞數）。
+#     實際的 multiplet 率會隨平台世代、化學版本、回收目標與上樣濃度變動，
+#     你的實驗條件不同就要換數字，而且要寫進方法段。
 dbr      <- 0.008 * ncol(tmp) / 1000                  # 例：5,261 顆 → 約 4.2%
 nExp     <- round(dbr * ncol(tmp))
 homo     <- modelHomotypic(tmp$seurat_clusters)       # 同型別相撞看不出來，要從期望值扣掉
