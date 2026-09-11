@@ -17,8 +17,15 @@
   就整群移除；現在候選群要經過三項診斷確認後才會被刪，未確認的會留下並跳出提醒。
 - **增殖細胞的分類**（`03_annotate.R`）：修正 `Cycling (undetermined)` 被歸進 `Glial (undetermined)`
   的問題。譜系（`celltype_l1`）與狀態（`celltype_l3`）現在分成兩欄——增殖是狀態，不是細胞型別。
-- **軌跡分析**（`08_trajectory.R`）：Slingshot 若找出一條以上的 lineage 會停下來並說明原因。
-  原本會只取第一條、且把所有細胞的權重設為 1，那和 Slingshot 的結果並不一致。
+- **軌跡分析**（`08_trajectory.R`）：Slingshot 在示範資料上會找出**不只一條 lineage**。
+  舊版只取第一條、把所有細胞的權重設為 1，等於默默丟掉其他分支上的細胞卻不會告訴你。
+  現在改成：先印出 lineage 的條數與組成，`fitGAM` 直接吃整個 pseudotime 矩陣與 curve weights，
+  多一節 §1c 用 `diffEndTest()` 比較分支終點差不差得開。需要「單一條」的圖與早／晚比較
+  仍固定用 lineage 1，圖名與輸出都標明是哪一條。
+  **這會改變 `08_traj_association.csv` 的 waldStat 與名次**，腳本註解裡的幾個參考數字
+  （TAGLN 91、GFAP 849、GPR37L1 4.94…）是舊版跑出來的，已標「待重跑更新」。
+  不受影響的是只跟 pseudotime 有關的數字：Neftel 兩端分數、跨工具的 Spearman 相關。
+  新增輸出：`08_pseudotime_lineages.pdf`、`08_traj_association_bylineage.csv`、`08_traj_diffend.csv`。
 - **活性分數的存放方式**（`09_activity.R`）：PROGENy 與 SCENIC 的分數改存進 `data` 而不是 `counts`。
   它們是推算出來的連續分數（可能為負），不是計數。
 
