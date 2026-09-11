@@ -3,7 +3,10 @@
 #
 # 對應影片：Q2 頁 7–8、Q3 頁 8
 # 執行方式：在 RStudio 開啟專案（.Rproj），從專案根目錄逐段執行。
-#           第一次執行約 10–20 分鐘（安裝套件 + 下載約 60 MB 資料）。
+#           第一次執行約 10–20 分鐘（安裝套件 + 下載約 90 MB 資料）。
+#           ⚠ 跑完 00 之後請重開 R（Session → Restart R）再跑 01。
+#             下面檢查套件用的 requireNamespace() 會把三百多個命名空間載進來，
+#             留著往下跑等於一開始就帶著一堆用不到的套件，出問題時很難判斷是誰的。
 # 練習資料：
 #   (1) 10x GBM 5k  — Human Glioblastoma Multiforme 3'v3, Cell Ranger 4.0.0, 5,604 cells
 #   (2) GSE84465    — Darmanis et al. 2017, 4 GBM patients, core vs periphery, Smart-seq2
@@ -51,7 +54,9 @@ install_gh("xuranw/MuSiC")
 #   macOS  : brew install jags
 #   Ubuntu : sudo apt-get install jags
 #   Windows: https://sourceforge.net/projects/mcmc-jags/  安裝後重開 R
-# 裝好之後用下面這行確認（FALSE = JAGS 還沒裝好，05_infercnv.R 會跑不動）：
+# 裝好之後用下面這行確認。它是間接檢查：infercnv 匯入 rjags，而 rjags 載入時要找得到系統的 JAGS，
+# 所以 JAGS 沒裝好這行就會是 FALSE。反過來說 FALSE 不一定是 JAGS 的問題——
+# 也可能是 infercnv 這個 R 套件本身沒裝成功。看到 FALSE 先看上面安裝時有沒有報錯。
 cat("infercnv 可載入：", requireNamespace("infercnv", quietly = TRUE), "\n")
 
 library(Seurat)
@@ -61,7 +66,10 @@ cat("Seurat", as.character(packageVersion("Seurat")), "\n")
 
 ## ---- 2. 專案結構 ---------------------------------------------------
 # 一律相對路徑；不要 setwd()。
-for (d in c("data", "R", "output", "output/figs", "output/rds", "output/tables")) dir.create(d, showWarnings = FALSE, recursive = TRUE)
+# 注意清單裡沒有 "R"：腳本本身就放在專案根目錄（.Rproj 所在的資料夾），再建一個 R/ 子資料夾
+# 只會多出一個空目錄讓人困惑。
+for (d in c("data", "output", "output/figs", "output/rds", "output/tables")) dir.create(d, showWarnings = FALSE, recursive = TRUE)
+cat("工作目錄：", getwd(), "\n")   # 應該是 .Rproj 所在的資料夾；不對的話下面的相對路徑全都會跑到別的地方去
 
 ## ---- 3. 資料 (1)：10x GBM 5k --------------------------------------
 # 官方頁面：10x Genomics Datasets → "Human Glioblastoma Multiforme: 3'v3 Whole Transcriptome Analysis"
@@ -72,7 +80,7 @@ gbm.url <- paste0("https://cf.10xgenomics.com/samples/cell-exp/4.0.0/",
 gbm.tar <- "data/gbm5k_filtered_feature_bc_matrix.tar.gz"
 if (!file.exists(gbm.tar)) {
   options(timeout = 600)
-  download.file(gbm.url, gbm.tar, mode = "wb")     # 約 30 MB
+  download.file(gbm.url, gbm.tar, mode = "wb")     # 約 69 MB
 }
 if (!dir.exists("data/gbm5k/filtered_feature_bc_matrix")) {
   untar(gbm.tar, exdir = "data/gbm5k")
