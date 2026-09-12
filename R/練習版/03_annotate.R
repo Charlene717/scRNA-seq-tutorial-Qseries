@@ -113,7 +113,8 @@ if (length(unassigned)) { warning("這些群還沒命名，先標 Unassigned："
 # 確認候選群真的該刪，再往下執行。
 qc.tab    <- read.csv("output/tables/02_per_cluster_qc.csv")
 cand.dbl  <- as.character(qc.tab$cluster[qc.tab$dbl > 0.5])   # 候選：只是「值得去查」
-# 偵測不等於決定：候選與確認分成兩個變數，換一份資料時就不會有東西被自動刪掉。
+# 確認名單要自己填。這一份資料在 02 §4b 三項診斷全中的只有群 12，所以只寫 12。
+# 偵測不等於決定：把候選與確認分成兩個變數，換一份資料時就不會有東西被自動刪掉。
 ## TODO ▶ 回 02 §4b 看三項診斷，哪幾群真的三項全中？只有全中的才填進來（Q2 頁 36）
 conf.dbl  <- c(____)
 
@@ -162,7 +163,7 @@ write.csv(imm.markers, "output/tables/03_immune_markers.csv", row.names = FALSE)
 #              "4" = "CD4 T", "5" = "Treg", "6" = "NK", "7" = "DC", "8" = "Cycling TAM")
 # imm$celltype_l2 <- imm.ids[as.character(Idents(imm))]
 # gbm$celltype_l2 <- gbm$celltype; gbm$celltype_l2[colnames(imm)] <- imm$celltype_l2   # 寫回全體
-# 命名規範（Q2 頁 57）：celltype_l1（主要類群）/ celltype_l2（型別）/ celltype_l3（狀態）/ celltype_conf
+# 命名規範（Q2 頁 61）：celltype_l1（主要類群）/ celltype_l2（型別）/ celltype_l3（狀態）/ celltype_conf
 # 注意：這裡「不」直接寫 Malignant。marker 只能定譜系：膠質瘤惡性細胞的正常對應細胞（星狀、OPC）
 #       就在同一塊組織裡，表現量高度重疊，所以沒有任何一組 marker 能區分惡性與正常膠質。
 #       在證據到位前就叫 Malignant，就是錯誤二（用型別標籤預設了結論）。
@@ -211,7 +212,7 @@ table(glial$state, glial$Phase)                       # 週期一起看：增殖
 ## （這裡在解答版有一段參考答案；先自己跑出數字，再回去對照）
 st <- setNames(rep(NA_character_, ncol(gbm)), colnames(gbm)); st[colnames(glial)] <- glial$state; gbm$state <- unname(st)
 
-# 三種打分數算法（Q2 頁 53）：AddModuleScore（上）、UCell、AUCell
+# 三種打分數算法（Q2 頁 58）：AddModuleScore（上）、UCell、AUCell
 if (requireNamespace("UCell", quietly = TRUE)) {
   glial <- UCell::AddModuleScore_UCell(glial, features = neftel, name = "_UCell")
   print(cor(glial$MES1, glial$MES1_UCell))               # 三種算法排序通常高度一致
