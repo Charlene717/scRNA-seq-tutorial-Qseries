@@ -58,7 +58,8 @@ cumu <- cumsum(pct)
 co1  <- which(cumu > 90 & pct < 5)[1]                 # 累積過 90%、且這個 PC 自己不到 5%
 co2  <- sort(which(diff(pct) < -0.1), decreasing = TRUE)[1] + 1   # 曲線最後一次明顯下降之後
 cat("量化 cutoff（僅供參考，仍要看圖）：", co1, co2, "\n")
-npc <- 25                                             # 腫瘤結構複雜：20–30；取多一點比取少安全
+## TODO ▶ 用幾個 PC？依 ElbowPlot 與累積變異決定（Q2 頁 30）
+npc <- ____
 
 ## ---- 3. cluster-umap ----------------------------------------------- Q2 頁 33–35
 gbm <- FindNeighbors(gbm, dims = 1:npc)               # PC 空間建 KNN / SNN 圖

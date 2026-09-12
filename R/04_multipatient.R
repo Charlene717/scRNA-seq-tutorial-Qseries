@@ -72,6 +72,15 @@ table(gbm4$patient, gbm4$tissue)                      # 4 × 2 = 8 個樣本
 # 注意 celltype_author 裡的 "Astocyte"：這是 GEO 原始 metadata 的拼字錯誤（少了 r）。
 # 不要「順手改掉」——後面與作者標籤比對時要對得上原檔。
 table(gbm4$celltype_author)
+# ★ 這張表就是 04–10 整條線的「解析度上限」，現在先看清楚，後面每一節都會受它限制：
+#   作者只分到這七類，其中 "Immune cell" 是一個粗桶——巨噬、小膠質、T 細胞、肥大細胞全在裡面。
+#   所以這份資料能講的最細就是「免疫細胞」這一層：06a 的 DE 只能比到這一層（那裡會看到
+#   肥大細胞的基因佔滿前幾名，就是這個桶太粗的實證）、07 的通訊圖只能寫 Immune cell 而不是 TAM、
+#   10 的反卷積也只估得出免疫總比例。
+#   想講得更細，唯一的辦法是「在這裡就把免疫細胞做亞群分群、重新命名」（做法見 03 §4b），
+#   而不是等到下游某一節再改名——註釋一旦改了，所有已經跑過的下游都要跟著重跑，
+#   這條線上的 05 惡性判定、06a 的 DE 與富集都會不一致。標籤要在進入分析之前定案。
+#   本課選擇沿用作者標籤、把限制寫明，不做亞群：這是取捨，不是疏漏，方法段要寫出來。
 p <- VlnPlot(gbm4, c("nFeature_RNA", "nCount_RNA", "percent.mt"), group.by = "patient", pt.size = 0, ncol = 3)
 ggsave("output/figs/04_qc_by_patient.png", p, width = 13, height = 4, dpi = 150, bg = "white")
 # 作者已 QC；這裡若有極端離群（percent.mt > median + 3×MAD）可再濾，並記錄。

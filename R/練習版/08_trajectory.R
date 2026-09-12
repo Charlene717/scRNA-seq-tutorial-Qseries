@@ -37,7 +37,7 @@ neftel <- list(OPC = c("BCAN", "PLP1", "GPR17", "FIBIN", "LHFPL3", "OLIG1"),
 mal1 <- AddModuleScore(mal1, features = neftel, name = names(neftel))
 root <- names(which.max(tapply(mal1$OPC1, Idents(mal1), mean)))
 sce  <- as.SingleCellExperiment(mal1)
-## TODO ▶ 軌跡的起點要有生物學理由：哪一群？（Q3 頁 73–74）
+## TODO ▶ 軌跡的起點要有生物學理由：哪一群？（Q3 頁 72、74）
 sce  <- slingshot(sce, clusterLabels = "seurat_clusters", reducedDim = "UMAP", start.clus = ____)
 # Slingshot 可能找出不只一條 lineage。分支不是錯誤，是這份資料本身的結構——
 # 真正危險的是「有分支卻沒發現」：直接取 [, 1] 會默默只分析第一條，其他分支專屬的細胞
@@ -77,9 +77,9 @@ for (i in seq_len(n.lin))                      # 每條都要看：有可能只�
 # 所以下面這行不必分兩種寫法，n.lin = 1 時也成立。
 keep    <- rowSums(cw) > 0                     # 沒被任何 lineage 收下的細胞（極少）先排除
 cnt.fit <- as.matrix(LayerData(mal1, layer = "counts")[VariableFeatures(mal1), keep])
-## TODO ▶ GAM 的節點數（Q3 頁 74）
 # ⚠ 每多一條 lineage，fitGAM 就多配一組平滑曲線，時間大致等比例增加。
 gam     <- fitGAM(counts = cnt.fit, pseudotime = pt.mat[keep, , drop = FALSE],
+                  ## TODO ▶ GAM 的節點數（Q3 頁 74）
                   cellWeights = cw[keep, , drop = FALSE], nknots = ____)
 # 排序要用 waldStat，不能用 pvalue：本例前 11 個基因的 p 值全部下溢成 0（FN1 一路到 VEGFA），
 # 但它們的 waldStat 從 1,129 到 106，差了十倍以上——照 p 值排，這 11 個誰在前面純粹是任意的，

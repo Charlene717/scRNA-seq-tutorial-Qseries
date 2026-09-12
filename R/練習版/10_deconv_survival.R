@@ -23,6 +23,10 @@ for (d in c("output/figs", "output/rds", "output/tables")) dir.create(d, recursi
 ## ---- 1. deconvolution ----------------------------------------------- Q3 頁 80–82
 library(MuSiC); library(TCGAbiolinks); library(SummarizedExperiment); library(survival); library(survminer)
 ref <- as.SingleCellExperiment(JoinLayers(gbm4))
+# celltype_l1 是把 type「合併」成五格，不是重新註釋：MuSiC 要的是少而分得開的型別，
+# 型別太細會讓 signature matrix 的欄位彼此相關、比例估不穩。合併不改變一顆細胞是什麼，
+# 所以下游做這件事是合理的；改名就不行了（見 07 §1 的說明）。
+# Immune / Oligo 只是縮寫，指的還是同一群 Immune cell / Oligodendrocyte。
 ref$celltype_l1 <- ifelse(gbm4$malignant == "malignant", "Malignant",
                    ifelse(gbm4$celltype_author == "Immune cell", "Immune",
                    ifelse(gbm4$celltype_author == "Oligodendrocyte", "Oligo",
@@ -144,7 +148,7 @@ cat("殘餘重複依表現量折疊：", n.before, " → ", nrow(bulk.mtx), " �
 # ★ 統計單位的問題，在這裡換到 Bulk 這一層。TCGA barcode 的第 4 段是樣本型別：
 #   01 = 原發腫瘤、02 = 復發、11 = 癌旁正常組織。三種混在一起做存活分析沒有意義。
 #   而且同一位病人常有兩三份 aliquot（例如 TCGA-06-0743 的 -1849-01 與 -A96S-41 是同一位），
-#   不去重就等於把同一個死亡事件算兩次——跟第 32 頁「cell-level DE 把細胞當樣本」是同一個錯，
+#   不去重就等於把同一個死亡事件算兩次——跟第 34 頁「cell-level DE 把細胞當樣本」是同一個錯，
 #   只是這裡重複的不是細胞而是定序檔案。
 bc <- colnames(bulk.mtx); part <- substr(bc, 1, 12); styp <- substr(bc, 14, 15)
 cat("\n== TCGA 樣本型別（01 原發／02 復發／11 正常）==\n"); print(table(styp))
@@ -176,7 +180,10 @@ clin$event <- as.integer(clin$vital_status == "Dead")
 # 時間是 NA 的人會被 coxph 默默刪掉。刪掉誰要先看一眼：
 # 如果 NA 集中在還活著的人（days_to_last_follow_up 沒填），刪掉之後就只剩死亡的人，
 # KM 曲線會被系統性拉低——那是選擇性刪除，不是隨機遺漏。
-cat("\n== vital_status × 存活時間是否為 NA ==\n"); print(table(clin$vital_status, is.na(clin$time)))
+cat("\n== vital_status × 存活時間是否為 NA ==\n")
+# useNA = "ifany"：table 預設會把 vital_status 本身是 NA 的那幾位整個藏起來，
+# 表格加總就對不上病人數（本例 283 vs 284），而「少掉的那一位」正是這一段在教人要看的東西。
+print(table(clin$vital_status, is.na(clin$time), useNA = "ifany"))
 cat("可分析人數", sum(!is.na(clin$time)), "／ 死亡事件", sum(clin$event[!is.na(clin$time)]), "\n")
 # 本例的答案很難看，但正因為難看才要印出來：54 位存活者裡有 53 位的
 # days_to_last_follow_up 是 NA，於是「還活著的人」幾乎整批被刪掉，

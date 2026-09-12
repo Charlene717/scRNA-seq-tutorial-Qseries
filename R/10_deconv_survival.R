@@ -19,6 +19,10 @@ for (d in c("output/figs", "output/rds", "output/tables")) dir.create(d, recursi
 ## ---- 1. deconvolution ----------------------------------------------- Q3 頁 80–82
 library(MuSiC); library(TCGAbiolinks); library(SummarizedExperiment); library(survival); library(survminer)
 ref <- as.SingleCellExperiment(JoinLayers(gbm4))
+# celltype_l1 是把 type「合併」成五格，不是重新註釋：MuSiC 要的是少而分得開的型別，
+# 型別太細會讓 signature matrix 的欄位彼此相關、比例估不穩。合併不改變一顆細胞是什麼，
+# 所以下游做這件事是合理的；改名就不行了（見 07 §1 的說明）。
+# Immune / Oligo 只是縮寫，指的還是同一群 Immune cell / Oligodendrocyte。
 ref$celltype_l1 <- ifelse(gbm4$malignant == "malignant", "Malignant",
                    ifelse(gbm4$celltype_author == "Immune cell", "Immune",
                    ifelse(gbm4$celltype_author == "Oligodendrocyte", "Oligo",
@@ -171,7 +175,10 @@ clin$event <- as.integer(clin$vital_status == "Dead")
 # 時間是 NA 的人會被 coxph 默默刪掉。刪掉誰要先看一眼：
 # 如果 NA 集中在還活著的人（days_to_last_follow_up 沒填），刪掉之後就只剩死亡的人，
 # KM 曲線會被系統性拉低——那是選擇性刪除，不是隨機遺漏。
-cat("\n== vital_status × 存活時間是否為 NA ==\n"); print(table(clin$vital_status, is.na(clin$time)))
+cat("\n== vital_status × 存活時間是否為 NA ==\n")
+# useNA = "ifany"：table 預設會把 vital_status 本身是 NA 的那幾位整個藏起來，
+# 表格加總就對不上病人數（本例 283 vs 284），而「少掉的那一位」正是這一段在教人要看的東西。
+print(table(clin$vital_status, is.na(clin$time), useNA = "ifany"))
 cat("可分析人數", sum(!is.na(clin$time)), "／ 死亡事件", sum(clin$event[!is.na(clin$time)]), "\n")
 # 本例的答案很難看，但正因為難看才要印出來：54 位存活者裡有 53 位的
 # days_to_last_follow_up 是 NA，於是「還活著的人」幾乎整批被刪掉，

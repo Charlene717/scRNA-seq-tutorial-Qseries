@@ -78,7 +78,7 @@ gbm$singler <- unname(setNames(pred$labels, rownames(pred))[as.character(gbm$seu
 # ★ 依照「你自己的」DotPlot 與 SingleR 結果填寫；下面只是範例對應，每份資料的編號都不同 ★
 # 範例對應（seed = 1234、Seurat 5.3、npc = 25、res 0.5、k = 20 跑 GBM 5k 得到的 13 群）
 # ※ 這是「範例」，不是答案：務必先看你自己的 03_dotplot_panel.png 與上面的 xval 表再定案。
-new.ids <- c("0"  = "Glial (undetermined)",           # C1QL4 / NPSR1：膠質／惡性（NPC 樣）
+new.ids <- c("0"  = "Glial (undetermined)",           # C1QL1 / NPSR1：膠質／惡性（NPC 樣）
              "1"  = "Oligodendrocyte",                # MAG / KLK6 / HAPLN2（SingleR 給 Astrocyte 是參考集沒有寡樹突）
              "2"  = "Glial (undetermined)",           # SAA1 / CP / CLU：星狀樣（AC 樣）——惡性與否待多重證據判定
              "3"  = "Glial (undetermined)",           # TRIB3 / IGFBP3 / VGF：壓力／缺氧樣惡性狀態

@@ -98,7 +98,7 @@ if (file.exists("output/tables/09_scenic_auc.csv")) {                      # reg
   auc <- read.csv("output/tables/09_scenic_auc.csv", row.names = 1, check.names = FALSE)
   gbm4[["scenic"]] <- CreateAssayObject(data = as.matrix(auc)[, colnames(gbm4)])   # AUC 也是分數，同上
   DoHeatmap(subset(gbm4, downsample = 100), features = c("SOX2(+)", "OLIG2(+)", "SOX10(+)", "SPI1(+)", "CEBPB(+)", "TCF7(+)", "ERG(+)"),
-            assay = "scenic", group.by = "type")   # cc_label 是 07 建的，06 的物件裡沒有
+            assay = "scenic", group.by = "type")
   DefaultAssay(gbm4) <- "RNA"
 }
 

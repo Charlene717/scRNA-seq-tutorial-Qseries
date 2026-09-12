@@ -28,10 +28,12 @@ if (inherits(try(suppressPackageStartupMessages(library(rjags)), silent = TRUE),
 }
 library(infercnv)
 # (a) 註釋檔：參考組 = 確定正常的細胞（免疫、寡樹突）；觀察組按病人分開
+# 參考組是整張熱圖的基準線，要用最保守的標準挑：混進 doublet 或混進惡性細胞，
+# 等於參考本身帶了 CNV 訊號，所有細胞的振幅都會被壓低，惡性與正常的界線跟著糊掉。
+# 這份資料是 Smart-seq2（孔盤式），doublet 率低，且用的是作者已驗證的標籤，所以直接取用；
+# 換成 10x 資料時，參考組要再把 doublet 候選排除掉——也就是只留 doublet_status == "Keep"
+# 的細胞（那個欄位由 03 建立，做法見 02 §4c）。
 ## TODO ▶ 誰是「確定正常」的參考組？為什麼不是星狀細胞？（Q3 頁 22–24）
-# 參考組是整張熱圖的基準線，要用最保守的標準挑：混進 doublet 或惡性細胞，等於參考本身帶了
-# CNV 訊號，所有細胞的振幅會被壓低。這份是 Smart-seq2（doublet 率低）；換 10x 資料時，
-# 參考組要只留 doublet_status == "Keep" 的細胞（欄位由 03 建立，做法見 02 §4c）。
 refs <- c("____", "____")
 stopifnot(all(refs %in% gbm4$celltype_author))
 ann <- data.frame(row.names = colnames(gbm4),
@@ -277,6 +279,11 @@ sessionInfo()
 #      它們的 cnv.score 分布跟 Tumor 的 Neoplastic 比如何？這告訴你浸潤細胞的什麼特性？
 #  5-4 對每位病人，畫出該病人惡性細胞在 chr7 與 chr10 的平均 CNV 值（cnv.all 的列名含基因，
 #      配合 gpos 找出染色體）。四位病人都有 chr7+/chr10− 嗎？
+#  5-5 三條線的分位數（s.hi 0.99、c.hi 0.99、c.lo 0.90）是判斷，不是定律——投影片沒教過這三個數字，
+#      因為沒有標準答案。把 s.hi 與 c.hi 改成 0.95、再改成 0.999 各跑一次 §2–§3：
+#      malignant / normal / unresolved 三類各差幾顆？跟作者標籤的一致率怎麼變？
+#      再想一層：哪一種錯比較貴——把惡性判成正常，還是把正常判成惡性？
+#      （提示：§3 那道譜系否決在防的是哪一種）最後寫下你選哪一組、理由是什麼。那句話就是方法段。
 #  進階 開 HMM = TRUE 重跑其中一位病人，看 infercnv 的 subcluster 結果：這位病人有幾個亞株？
 #      各亞株的私有事件是什麼？
 # =====================================================================
