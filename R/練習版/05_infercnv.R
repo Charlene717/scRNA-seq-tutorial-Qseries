@@ -129,7 +129,7 @@ for (f in c("infercnv.png", "infercnv.preliminary.png", "infercnv_subclusters.pn
 ## ---- 1b. 中間結果要不要留（磁碟 vs 續跑）----------------------------
 # 這一步不影響任何分析結果，只影響磁碟。先把事實列出來，再自己決定。
 #
-# inferCNV 每做完一步就把整個物件存一份到 out_dir。本例（4 位病人、3,589 顆細胞）：
+# inferCNV 每做完一步就把整個物件存一份到 out_dir。本例（4 位病人、3,539 顆細胞）：
 #   13 個中間步驟檔（01_incoming … 22_denoise、preliminary）   約 2.9 GB
 #   run.final.infercnv_obj（§2 之後唯一會讀的）                 約 95 MB
 # 細胞數越多差距越大——換成 10x 的幾萬顆，中間檔會是好幾十 GB。

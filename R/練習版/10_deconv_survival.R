@@ -5,6 +5,8 @@
 # 輸入：output/rds/06_gbm4_final.rds；TCGA-GBM Bulk（TCGAbiolinks 自動下載，需連網）
 # 輸出：output/tables/10_deconv_tcga_gbm.csv、output/figs/10_km_*.pdf
 # 時間：TCGA 下載約 10 分鐘（僅第一次），其餘約 5 分鐘
+# ⚠ 這支唯一會「不是你的錯」卻跑不完的地方是 GDCprepare：它在下載之外還要再連一次 GDC API
+#   補臨床欄位，那支 API 偶爾不通。腳本會自動重試三次；真的連不上就過幾分鐘再跑，不必重新下載。
 # 這是「單細胞產生假說 → 公開世代驗證」那條路：用 4 位病人的型別比例假說，到 TCGA 的 Bulk 世代驗證。
 # 注意：TCGA 下載回來的是「檔案」不是「病人」——同一位病人常有兩三份 aliquot，還混著復發與正常組織。
 # 進統計之前要先整理成「一位病人一筆、只留原發腫瘤」，否則等於把同一個死亡事件重複計算。
@@ -18,7 +20,7 @@ set.seed(1234)
 gbm4 <- readRDS("output/rds/06_gbm4_final.rds")
 for (d in c("output/figs", "output/rds", "output/tables")) dir.create(d, recursive = TRUE, showWarnings = FALSE)
 
-## ---- 1. deconvolution ----------------------------------------------- Q3 頁 82
+## ---- 1. deconvolution ----------------------------------------------- Q3 頁 80–82
 library(MuSiC); library(TCGAbiolinks); library(SummarizedExperiment); library(survival); library(survminer)
 ref <- as.SingleCellExperiment(JoinLayers(gbm4))
 ref$celltype_l1 <- ifelse(gbm4$malignant == "malignant", "Malignant",
@@ -39,7 +41,23 @@ GDCdownload(q, directory = GDC_DIR, files.per.chunk = 50)
 if (file.exists("MANIFEST.txt")) {                       # 跨磁碟（專案在 E:、GDC_DIR 在 C:）不能用 file.rename
   if (file.copy("MANIFEST.txt", file.path(GDC_DIR, "MANIFEST.txt"), overwrite = TRUE)) file.remove("MANIFEST.txt")
 }
-bulk <- GDCprepare(q, directory = GDC_DIR)                                   # 本例回來 391 個檔案，含臨床欄位
+# ⚠ GDCprepare 跟 GDCdownload 是兩回事：檔案已經在本機了，但 prepare 還要「再連一次 GDC API」
+#   去補臨床欄位（colDataPrepare）。那支 API 不太穩，失敗時會吐出一整段 URL 加一句
+#   「Prepare will not be possible」，看起來像腳本壞了——其實只是對方伺服器當下不通，
+#   你的下載檔案完全沒事。所以這裡重試幾次，真的不行就講清楚該怎麼辦，不要讓人以為要重下載。
+bulk <- NULL
+for (try.i in 1:3) {
+  bulk <- tryCatch(GDCprepare(q, directory = GDC_DIR),      # 本例回來 391 個檔案，含臨床欄位
+                   error = function(e) { message("  GDCprepare 第 ", try.i, " 次失敗：",
+                                                 sub("\n.*", "", conditionMessage(e))); NULL })
+  if (!is.null(bulk)) break
+  if (try.i < 3) { message("  20 秒後重試……"); Sys.sleep(20) }
+}
+if (is.null(bulk))
+  stop("GDCprepare 連續 3 次失敗。\n",
+       "  檔案已經在 ", GDC_DIR, " 下載好了（391 個），失敗的是 prepare 去 GDC API 補臨床欄位那一步——\n",
+       "  這是對方伺服器的問題，不是你的資料或程式。過幾分鐘從本行重跑即可，不需要重新下載。\n",
+       "  （GDC 維護公告：https://portal.gdc.cancer.gov/ ）", call. = FALSE)
 bulk.mtx <- assay(bulk, "unstranded"); rownames(bulk.mtx) <- rowData(bulk)$gene_name
 # 重複的基因 symbol：多個 Ensembl 基因（ENSG）對到同一個名字。
 # 最省事的做法是 !duplicated() 留第一個，但列的順序是照 Ensembl ID 排的、跟生物學無關，

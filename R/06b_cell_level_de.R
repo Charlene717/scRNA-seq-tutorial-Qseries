@@ -55,7 +55,7 @@ cat("只在 Wilcoxon 前 30 名的基因（很可能是病人效應）：", past
 # 防線二：逐病人算 logFC，方向一致的才留。這是 cell-level DE 最重要的一張表。
 per.pat <- function(g) {
   sapply(unique(obj$patient), function(p) {
-    o <- subset(obj, patient == p)
+    o <- subset(obj, cells = colnames(obj)[obj$patient == p])   # 用 cells= 而不是 patient == p：同 06a §2
     if (min(table(factor(o$tissue, levels = levels(obj$tissue)))) < 5) return(NA_real_)  # 單邊 < 5 顆不算
     m <- LayerData(o, layer = "data")[g, ]
     mean(m[o$tissue == "Tumor"]) - mean(m[o$tissue == "Periphery"])
@@ -70,12 +70,13 @@ print(cons.df)
 # NA 不是錯誤：NA = 該病人某一側 < 5 顆、無法評估。整欄 NA 正是「為什麼不能 pseudobulk」的視覺化——
 # 這個型別只有 BT_S2 可評估（n_evaluable = 1），一致性防線根本使不上力。
 if (max(cons.df$n_evaluable) <= 1)
-  message("  ⚠ 只有 ", sum(!is.na(cons[1, ])), " 位病人可評估——一致性無從檢查，結論只屬於這（幾）位病人，報告限制段落要明寫。")
+  message("  ⚠ 只有 ", max(cons.df$n_evaluable), " 位病人可評估——一致性無從檢查，結論只屬於這（幾）位病人，報告限制段落要明寫。")
 cons.df$verdict <- ifelse(cons.df$n_evaluable < 2, "無法判斷（可評估病人 < 2）",
                    ifelse(cons.df$n_same_dir == cons.df$n_evaluable, "方向一致", "方向不一致"))
 de$consistent <- de$gene %in% cons.df$gene[cons.df$n_evaluable >= 2 & cons.df$n_same_dir == cons.df$n_evaluable]
-cat(sprintf("通過一致性防線的基因：%d / %d（n_evaluable < 2 一律不算通過）\n",
-            sum(de$consistent), nrow(de)))
+cat(sprintf("通過一致性防線的基因：%d / %d（只檢查了 §3 那前 %d 名；n_evaluable < 2 一律不算通過）\n",
+            sum(de$consistent), nrow(cons.df), nrow(cons.df)))
+#   分母是「實際檢查過的基因數」，不是整張 de 表——這條防線只對前 30 名做過。
 # 只有一位病人可評估時（n_evaluable = 1），「一致性」無從談起——這正是要誠實寫進報告的限制。
 
 ## ---- 4. permutation-check ------------------------------------------- Q3 頁 54
@@ -140,8 +141,10 @@ sessionInfo()
 # ▶ 練習 6b
 #  6b-1 §2(c) 印出的「只在 Wilcoxon 前 30 名」基因，逐一畫 VlnPlot(split.by = "patient")：
 #       它們的差異是不是主要來自某一位病人？這就是共變量在扣的東西。
-#  6b-2 對 Malignant（06a 裡只有 2 對病人）也跑一次這支：§3 的一致性表跟 06a 的 pseudobulk 結果
-#       （06_de_Malignant.csv，06a 產出）前 20 名重疊多少？兩種方法各抓到什麼對方沒有的？
+#  6b-2 先做 06a 的練習 6-3：把 MIN_CELLS 降到 5，惡性細胞才會有 2 對病人、才會產生
+#       06_de_Malignant.csv（預設的 20 顆門檻下它是 0 對病人，檔案不存在）。
+#       然後把 TYPE 換成 "Malignant" 跑這支：§3 的一致性表跟那份 pseudobulk 結果前 20 名重疊多少？
+#       兩種方法各抓到什麼對方沒有的？哪一份你會寫進論文？
 #  6b-3 把 §4 的 n.perm 提高到 100：置換分布的右尾碰得到真實值嗎？寫一句「這型別的 DE 可信度」結論。
 #  6b-4 只有一位病人兩個部位都有時（例如把 obj 換成 BT_S2 的 OPC），三道防線各剩哪些還能做？
 #       報告裡的限制段落該怎麼寫？

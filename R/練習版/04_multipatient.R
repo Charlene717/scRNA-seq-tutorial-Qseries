@@ -176,8 +176,13 @@ lisi.tab <- gbm4@meta.data |> group_by(celltype_author) |>
   summarise(across(starts_with("lisi_"), ~ round(median(.x), 2)))
 print(lisi.tab)
 write.csv(lisi.tab, "output/tables/04_lisi_by_celltype.csv", row.names = FALSE)
-# LISI 量的是「鄰域裡的病人有多混」，只是混合程度的指標：免疫／寡樹突接近病人數（4）支持正常細胞
-# 混得比較開；Neoplastic 接近 1 支持病人特異的局部結構被保留（是預期的，不是失敗）。
+# LISI 量的是「鄰域裡的病人有多混」，只是混合程度的指標。
+# ⚠ 不要拿「病人數 4」當標竿。LISI 的可達上限是 1/Σp²，p 是各病人的細胞比例；
+#   本資料四位病人是 488 / 1,157 / 1,511 / 383，算出來上限只有 3.13，不是 4。
+#   同理熵的可達上限是 -Σp·lnp = 1.24，不是等量時的 log(4) = 1.386。
+#   病人細胞數越不平均，這兩個上限掉得越多——換一份資料要自己重算，不要照抄。
+# 所以要看的是「相對關係」，不是「離上限多近」：
+#   同一型別 pca → 整合後有沒有上升（正常細胞該升）、以及惡性升得比正常多還是少。
 # 但它不能單獨證明整合在生物學上是對的，也不等於「CNV 被保住」——CNV 要看 05 的 inferCNV。
 # 要下結論還得配上 §5 的正負對照，以及確認已知 marker 的表現量沒有被校正動到。
 # 比較 lisi_cca 與 lisi_harmony：正常細胞誰混得好、惡性細胞誰保得住——這就是選整合方法的依據。

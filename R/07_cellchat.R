@@ -1,7 +1,7 @@
 # =====================================================================
 # 07_cellchat.R — 練習腳本 7：細胞通訊（CellChat）——每個樣本各跑一次、六種圖、兩條件比較、LIANA 交叉驗證
 #
-# 對應影片：Q3 頁 58–71（§1 跑一次 CellChat、§2 路徑層級與六種圖、§3 兩條件比較、§4 LIANA）
+# 對應影片：Q3 頁 58–70（§1 跑一次 CellChat、§2 路徑層級與六種圖、§3 兩條件比較、§4 LIANA）
 # 輸入：output/rds/06_gbm4_final.rds（06a_pseudobulk_gsea.R；含 malignant 標籤與 type 欄）
 # 輸出：output/rds/07_cellchat/<patient>_<tissue>_min<MIN.CELLS>.rds、output/tables/07_liana_top500.csv、output/figs/07_*.pdf
 # 時間：每個樣本約 5–15 分鐘（8 個樣本，建議先跑一位病人）；跑過的樣本會存成 rds，
@@ -41,20 +41,32 @@ gbm4 <- subset(gbm4, malignant != "unresolved")
 #   都掛著一個錯的族群名，而讀圖的人不會知道。
 imm.cells <- colnames(gbm4)[gbm4$cc_label == "Macro/MG"]
 if (length(imm.cells)) {
-  chk <- c(PTPRC = "PTPRC", CD68 = "CD68", CSF1R = "CSF1R", CD3E = "CD3E", CD2 = "CD2")
-  chk <- chk[chk %in% rownames(gbm4)]
+  chk  <- c(PTPRC = "PTPRC", CD68 = "CD68", CSF1R = "CSF1R", CD3E = "CD3E", CD2 = "CD2")
+  miss <- chk[!chk %in% rownames(gbm4)]          # 沒有的基因要講出來，不能安靜跳過
+  chk  <- chk[chk %in% rownames(gbm4)]
   pos <- vapply(chk, function(g)
     mean(Seurat::GetAssayData(gbm4, layer = "data")[g, imm.cells] > 0), numeric(1))
   cat("\n== 檢查「Immune cell → Macro/MG」這個假設 ==\n")
+  if (length(miss))
+    cat("⚠ 這份資料裡沒有這些基因，沒被檢查到：", paste(miss, collapse = "、"),
+        "（本例 CD3E 就不在，T 細胞只剩 CD2 一個標誌）\n")
   print(round(pos, 3))
-  t.frac <- max(pos[intersect(names(pos), c("CD3E", "CD2"))], 0)
-  cat(sprintf("T 細胞標誌陽性率上限約 %.1f%%\n", 100 * t.frac))
-  if (t.frac > 0.10)
-    warning("Macro/MG 這一群裡 T 細胞標誌陽性率超過 10%——這個標籤名稱撐不住。\n",
-            "  建議改回 \"Immune\"，或先把免疫細胞做亞群分群再命名（做法見 03 §4）。\n",
-            "  沿用現在的名字的話，方法段一定要寫明它其實是免疫細胞總稱。", call. = FALSE)
-  else
-    cat("T 細胞比例低，以髓系為主的假設在這份資料上站得住；方法段仍要寫明這是依 marker 推定的。\n")
+  t.mk   <- intersect(names(pos), c("CD3E", "CD2"))
+  t.frac <- if (length(t.mk)) max(pos[t.mk]) else NA_real_
+  #   ↑ 不要寫成 max(pos[...], 0)：標誌一個都不在時它會回 0，
+  #     然後結論就變成「T 細胞比例低」——那是「沒檢查」被讀成「檢查過了」。
+  if (is.na(t.frac)) {
+    cat("T 細胞標誌一個都不在這份資料裡，這個假設沒辦法用 marker 檢查。\n",
+        "  這種情況下不要沿用 Macro/MG 這個名字，改回 \"Immune\"；要用的話，方法段必須寫明它未經驗證。\n", sep = "")
+  } else {
+    cat(sprintf("T 細胞標誌陽性率上限約 %.1f%%（依據：%s）\n", 100 * t.frac, paste(t.mk, collapse = "、")))
+    if (t.frac > 0.10)
+      warning("Macro/MG 這一群裡 T 細胞標誌陽性率超過 10%——這個標籤名稱撐不住。\n",
+              "  建議改回 \"Immune\"，或先把免疫細胞做亞群分群再命名（做法見 03 §4）。\n",
+              "  沿用現在的名字的話，方法段一定要寫明它其實是免疫細胞總稱。", call. = FALSE)
+    else
+      cat("T 細胞比例低，以髓系為主的假設在這份資料上站得住；方法段仍要寫明這是依 marker 推定的。\n")
+  }
 }
 
 table(gbm4$cc_label, paste(gbm4$patient, gbm4$tissue))                      # 每群 ≥ MIN.CELLS 顆才進得了網路
@@ -111,13 +123,15 @@ for (s in names(cc.all)) {
         paste(sprintf("%s(%d)", names(n)[n < MIN.CELLS], n[n < MIN.CELLS]), collapse = "、")))
 }
 
-if (!length(cc.all)) stop("沒有任何樣本跑完 CellChat：§1 的 ncol(obj) < 200 把八個樣本全擋掉了，把門檻放低再跑一次。")
+if (!length(cc.all)) stop("沒有任何樣本跑完 CellChat：每個樣本能用的群（細胞數 ≥ MIN.CELLS）都不到兩群。\n",
+  "  通訊至少要兩群才成立，所以這不是程式壞了，是資料撐不起來。把 MIN.CELLS 調低再跑一次，\n",
+  "  但要記得：門檻愈低，triMean 機率愈不穩。", call. = FALSE)
 DEMO <- if ("BT_S2_Tumor" %in% names(cc.all)) "BT_S2_Tumor" else names(cc.all)[1]
 cc <- cc.all[[DEMO]]                                                        # 以下六種圖用一個樣本示範
 DEMO.p <- sub("_[^_]*$", "", DEMO); DEMO.t <- sub(".*_", "", DEMO)
 cat("\n六種圖的示範樣本：", DEMO, "\n")
 
-## ---- 2. six-plots --------------------------------------------------- Q3 頁 62–67
+## ---- 2. six-plots --------------------------------------------------- Q3 頁 62–68
 groupSize <- as.numeric(table(cc@idents))
 pdf("output/figs/07_1_circle.pdf", width = 10, height = 5); par(mfrow = c(1, 2), xpd = TRUE)
 netVisual_circle(cc@net$count,  vertex.weight = groupSize, weight.scale = TRUE, label.edge = FALSE, title.name = "Number of interactions")
@@ -160,7 +174,7 @@ feats <- intersect(c("SPP1", "CD44"), rownames(gbm4))
 if (length(feats)) VlnPlot(subset(gbm4, patient == DEMO.p & tissue == DEMO.t),
                            features = feats, group.by = "cc_label", pt.size = 0)
 
-## ---- 3. compare-conditions ------------------------------------------ Q3 頁 68–70
+## ---- 3. compare-conditions ------------------------------------------ Q3 頁 67、69
 PAIR <- "BT_S2"                                                             # 同一位病人的核心 vs 邊緣
 need <- paste0(PAIR, c("_Tumor", "_Periphery"))
 if (!all(need %in% names(cc.all)))
@@ -230,7 +244,7 @@ if (length(both) >= 1)
   bubble_pair(both, both, "output/figs/07_6_bubble_shared.pdf", "兩條件共同的細胞群")
 ## >>> 參考答案 ------------------------------------------------------
 # 本課這份資料的結果（seed 1234，MIN.CELLS = 20）：
-#   8 個樣本裡 5 個細胞數夠、跑完 CellChat。
+#   8 個樣本裡 7 個湊得出兩群以上、跑完 CellChat；只有 BT_S6_Periphery 被擋下（只有 1 群過門檻）。
 #   BT_S2 Periphery 的 Malignant 只有 13 顆，低於門檻被整組移除，
 #   所以 Macro/MG → Malignant 在 Periphery 這一側根本不存在——不是「沒有訊號」，是「沒有細胞」。
 #   log 裡那句「91.4% interactions are removed」就是這件事的量化：
@@ -251,7 +265,7 @@ cat("兩個部位都有 CellChat 結果的病人：", paste(pairs.ok, collapse =
 # 對每位病人重複 §3，收集 rankNet 的顯著路徑，取交集
 # rank.list <- lapply(patients, function(p) rankNet(mergeCellChat(list(cc.all[[paste0(p,"_Tumor")]], cc.all[[paste0(p,"_Periphery")]]), add.names = c("Core","Periphery")), mode = "comparison", do.stat = TRUE, return.data = TRUE)$signaling.contribution)
 
-## ---- 4. liana-crosscheck --------------------------------------------- Q3 頁 71
+## ---- 4. liana-crosscheck --------------------------------------------- Q3 頁 70
 if (requireNamespace("liana", quietly = TRUE)) {
   library(liana)
   obj <- subset(gbm4, patient == DEMO.p & tissue == DEMO.t); Idents(obj) <- "cc_label"
@@ -270,7 +284,9 @@ if (requireNamespace("liana", quietly = TRUE)) {
   } else cat("這個樣本裡 Macro/MG 或目標群被 LIANA 的 5 顆門檻擋掉了，跳過 dotplot\n")
   write.csv(li.agg |> dplyr::select(-starts_with("natmi"), -starts_with("connectome")) |> head(500),
             "output/tables/07_liana_top500.csv", row.names = FALSE)
-  # 與 CellChat 的 bubble 對照：SPP1–CD44、MIF–CD74 兩邊都在前段，才寫進結果
+  # 與 CellChat 的 bubble 對照：SPP1–CD44 兩邊都在前段，才寫進結果。
+  # ⚠ 教科書常舉的 MIF–CD74 不能拿來當「兩套方法一致」的例子——這個樣本的 cc@netP$pathways 裡
+  #   根本沒有 MIF（VEGF 也沒有）。要對照的永遠是自己這一輪真的跑出來的路徑清單。
 ## >>> 參考答案 ------------------------------------------------------
 # 本課這份資料的 LIANA 共識前三名（BT_S2_Tumor，Macro/MG → Malignant）：
 #   ST6GAL1–EGFR、PTPN6–EGFR、SPP1–CD44。
@@ -296,15 +312,17 @@ sessionInfo()
 #  7-5 LIANA 的共識前 10 對與 CellChat bubble 的前 10 對重疊幾對？不重疊的原因可能是什麼？
 #      再做一件事：把前 10 對的「配體」一個一個查 UniProt 的 subcellular location，
 #      有幾個真的是分泌型或單次穿膜的表面蛋白？細胞內的蛋白排進前十，代表什麼？
-#  7-7 population.size 各設一次 TRUE / FALSE 重跑同一個樣本：哪些路徑的排名變了？
-#      這個樣本的 Macro/MG 與 Malignant 細胞數差多少？兩個設定的差距跟這個比例有關嗎？
-#      哪一個結果該寫進論文——還是兩個都要報？
-#  7-8 §1 開頭把 Immune cell 改名成 Macro/MG 是一個假設。用 PTPRC / CD68 / CSF1R / CD3E 的
-#      陽性率檢查這個假設：T 細胞佔多少？如果超過兩成，這個改名還站得住嗎？
 #  7-6 §1 的存活表：哪些「樣本 × 細胞群」被 MIN.CELLS 擋掉？把 MIN.CELLS 改成 10 重跑 §1–§3，
 #      Macro/MG → Malignant 的並排 bubble 畫得出來了嗎？畫得出來的話，那張圖可以寫進論文嗎？
 #      （提示：13 顆細胞估出來的 triMean 機率，換一個 seed 或少抽兩顆細胞，還會是同一個數字嗎？）
 #      改 MIN.CELLS 會自動存成另一個檔名（..._min10.rds），不會誤用 20 那一輪的快取；
 #      代價是那些樣本要重算一次，這是應該付的——門檻變了，網路就是不一樣的網路。
+#  7-7 population.size 各設一次 TRUE / FALSE 重跑同一個樣本：哪些路徑的排名變了？
+#      這個樣本的 Macro/MG 與 Malignant 細胞數差多少？兩個設定的差距跟這個比例有關嗎？
+#      哪一個結果該寫進論文——還是兩個都要報？
+#  7-8 §1 開頭把 Immune cell 改名成 Macro/MG 是一個假設。看 §1 印出的髓系與 T 細胞標誌陽性率：
+#      T 細胞佔多少？如果超過兩成，這個改名還站得住嗎？
+#      再看一件事：腳本會印出「沒被檢查到」的基因——這份資料裡 CD3E 不在，T 細胞只剩 CD2 一個標誌。
+#      一個標誌就下結論，風險在哪裡？要補強的話你會再找哪些基因？
 #  進階 用 NicheNet 反推：邊緣惡性細胞相對核心上調的基因（06 的 DE），最能被哪個配體解釋？與 CellChat 的結論一致嗎？
 # =====================================================================

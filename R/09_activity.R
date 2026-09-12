@@ -57,9 +57,16 @@ if (sum(ok) >= 3) {
   cat("\n>> 每格 ≥", MINCELL, "顆的配對病人只有", sum(ok), "位，不做配對檢定。\n",
       "   下面只畫描述性的配對變化圖；報告裡要寫的是「資料條件不允許做這個比較」，\n",
       "   而不是一個沒有意義的 p 值。\n")
-  matplot(t(as.matrix(pa[paired, c("hyp_Tumor", "hyp_Periphery")])), type = "b", pch = 16,
-          xaxt = "n", ylab = "PROGENy Hypoxia", xlab = "", main = "Descriptive only (n too small)")
-  axis(1, at = 1:2, labels = c("Tumor", "Periphery"))
+  draw_pairs <- function() {                       # 螢幕與檔案各畫一次，不然這張圖只活在 RStudio 裡
+    matplot(t(as.matrix(pa[paired, c("hyp_Tumor", "hyp_Periphery")])), type = "b", pch = 16,
+            xaxt = "n", ylab = "PROGENy Hypoxia", xlab = "",
+            main = sprintf("Descriptive only (n = %d pairs, all thin)", sum(paired)))
+    axis(1, at = 1:2, labels = c("Tumor", "Periphery"))
+    legend("topright", legend = sprintf("%s (peri n=%d)", pa$patient[paired], pa$n_Periphery[paired]),
+           col = seq_len(sum(paired)), lty = 1, pch = 16, bty = "n", cex = 0.8)
+  }
+  draw_pairs()
+  pdf("output/figs/09_progeny_hypoxia_paired.pdf", 5, 4); draw_pairs(); dev.off()
 }
 # 本例的邊緣側惡性細胞數：BT_S1 = 1、BT_S2 = 13、BT_S4 = 17、BT_S6 = 0。
 # 三個配得成對的病人，邊緣那一格全都不到 20 顆；BT_S1 那個 3.80 是「一顆細胞」的值。
@@ -67,10 +74,12 @@ if (sum(ok) >= 3) {
 #   ① 進到檢定裡的東西不可信——一顆細胞的平均不是那個病人邊緣的缺氧活性。
 #      BT_S1 之所以方向相反，最合理的解釋就是這個，不是生物學。
 #   ② 就算數字可信，n = 3 也測不到東西：p = 0.834、平均差 0.30、95% CI [-5.19, 5.80]。
+#      （這三個數字是把上面那三位硬跑一次配對 t 檢定得到的——腳本刻意不跑，列在這裡
+#        是要讓你看到「就算跑了也沒用」。想自己驗證：t.test(pa$hyp_Tumor[paired], pa$hyp_Periphery[paired], paired = TRUE)）
 #      區間寬到從 -5 跨到 +5，意思是「這個檢定看不出來」，不是「兩個部位沒有差別」——
 #      不顯著與沒差異是兩件事，第 52 頁講的功效就是在講這個。
 # 對照組：第 47 頁的 GSEA 看得到「核心缺氧」，那是免疫細胞、8 個樣本、幾千個基因的排名；
-#         第 73 頁的軌跡看得到缺氧基因上升，那是惡性細胞內部沿 pseudotime 的連續變化。
+#         第 72 頁的軌跡看得到缺氧基因上升，那是惡性細胞內部沿 pseudotime 的連續變化。
 #         同一套生物學，換個統計單位就從看得到變成看不到——差別不在生物學。
 write.csv(pa, "output/tables/09_progeny_hypoxia_by_sample.csv", row.names = FALSE)
 DefaultAssay(gbm4) <- "RNA"
@@ -95,6 +104,8 @@ sessionInfo()
 #  9-1 先看每一格的惡性細胞數，再決定那個 p 值值不值得讀。跟 06a 的 GSEA（HALLMARK_HYPOXIA）比，
 #      為什麼同一份資料、同一個生物學，一邊看得到、一邊看不到？（提示：統計單位與每格的細胞數）
 #  9-2 EGFR 與 JAK-STAT 的活性在哪種細胞最高？用 FeaturePlot 對照 celltype_author 說明。
-#  9-3 把 §1 的「病人 × 部位平均 → 配對 t 檢定」流程套到 TGFb：結論是什麼？單位為什麼是病人不是細胞？
+#  9-3 把 §1 的「病人 × 部位平均 → 門檻檢查 → 配對檢定」流程套到 TGFb。
+#      注意：細胞數跟 Hypoxia 那一輪完全一樣，所以門檻一樣會擋下來——這就是答案的一半。
+#      另一半：如果你把 MINCELL 調低讓它跑得出 p 值，那個 p 值可以寫進論文嗎？單位為什麼是病人不是細胞？
 #  進階 跑 pySCENIC（§2 註解的三步），比較惡性細胞的 SOX2(+)/OLIG2(+) 與 TAM 的 SPI1(+)/CEBPB(+) 活性分布。
 # =====================================================================

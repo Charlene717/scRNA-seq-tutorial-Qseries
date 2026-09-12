@@ -33,8 +33,11 @@ if (file.exists("output/rds/05_gbm4_malignant.rds")) {
 }
 gbm4$tissue <- factor(gbm4$tissue, levels = c("Periphery", "Tumor"))   # 係數 = Tumor(核心) vs Periphery(邊緣)
 
-## ---- 1. composition ------------------------------------------------ Q3 頁 29–31
+## ---- 1. composition ------------------------------------------------ Q3 頁 29–32
 gbm4$type <- ifelse(gbm4$malignant == "malignant", "Malignant", gbm4$celltype_author)
+# 圖例會同時出現 Malignant 與 Neoplastic，那不是兩種細胞：Malignant 是 05 三角驗證判定為惡性的，
+# Neoplastic 是「作者標了腫瘤、但我們判成 normal 或 unresolved」剩下的那些。
+# 兩者的落差，就是 05 §3 那張一致性表（作者惡性抓回 59.1%）畫在組成圖上的樣子。
 prop <- gbm4@meta.data |> dplyr::count(patient, tissue, type) |>
         group_by(patient, tissue) |> mutate(frac = n / sum(n)) |> ungroup()
 p <- ggplot(prop, aes(tissue, frac, fill = type)) + geom_col(width = .8) +
@@ -44,7 +47,7 @@ ggsave("output/figs/06_composition.png", p, width = 12, height = 4.5, dpi = 150,
 # 檢定：比例是組成資料，以「樣本」為單位（8 個），配對設計
 library(speckle); library(limma)
 sample.id <- paste(gbm4$patient, gbm4$tissue, sep = "_")
-## TODO ▶ 組成資料為什麼要轉換？用哪種？（Q3 頁 29–31）
+## TODO ▶ 組成資料為什麼要轉換？用哪種？（Q3 頁 30、32）
 props <- getTransformedProps(clusters = gbm4$type, sample = sample.id, transform = "____")
 # 注意：病人 ID 本身含底線（BT_S1），所以「病人」要拿掉最後一段（部位），不能用第一個底線切
 sn <- colnames(props$TransformedProps)
@@ -56,11 +59,11 @@ fit <- eBayes(contrasts.fit(fit, makeContrasts(tissueTumor - tissuePeriphery, le
 topTable(fit, n = Inf)                                # 每種型別：核心 vs 邊緣的比例差異（配對）
 # 解讀：Malignant 在核心較高、Oligodendrocyte 在邊緣較高——但記得封閉性：一種變少其他必變多。
 
-## ---- 2. pseudobulk-de（每種細胞型別各自比）-------------------------- Q3 頁 33–37
+## ---- 2. pseudobulk-de（每種細胞型別各自比）-------------------------- Q3 頁 33–38
 # 為什麼要「每種型別各自比」：核心 vs 邊緣的差異在惡性細胞、巨噬細胞、寡樹突裡各不相同。
 # 把所有細胞混在一起比，得到的是「組成差異」（邊緣的正常腦細胞多），不是任何一種細胞的變化。
 library(DESeq2)
-## TODO ▶ 每個「病人 × 部位」至少幾顆細胞才算一個 pseudobulk 樣本？（Q3 頁 34）
+## TODO ▶ 每個「病人 × 部位」至少幾顆細胞才算一個 pseudobulk 樣本？（Q3 頁 36）
 MIN_CELLS <- ____        # 每個「病人 × 部位」至少要有這麼多顆細胞才算一個可信的 pseudobulk 樣本
 MIN_PAIRS <- 2         # 至少要有這麼多位病人兩個部位都有樣本，配對設計才成立
 MIN_PAIRS_INF <- 4     # 少於這個對數，結果只當探索用，不當推論
@@ -83,11 +86,11 @@ pb_de <- function(obj, type, min.cells = MIN_CELLS, min.pairs = MIN_PAIRS) {
   coldata <- data.frame(patient = sub("_[^_]*$", "", colnames(pb)),   # 病人 ID 含底線，從最後一段切
                         tissue  = factor(sub(".*_", "", colnames(pb)), levels = c("Periphery", "Tumor")),
                         row.names = colnames(pb))
-  ## TODO ▶ 配對設計的公式怎麼寫？（Q3 頁 33–34）
+  ## TODO ▶ 配對設計的公式怎麼寫？（Q3 頁 35、37）
   dds <- DESeqDataSetFromMatrix(pb[rowSums(pb) >= 10, ], coldata, design = ~ ____ + ____)
   dds <- DESeq(dds, quiet = TRUE)
   raw <- results(dds, name = "tissue_Tumor_vs_Periphery")             # 未收縮：stat 給 GSEA 排序、火山圖
-  ## TODO ▶ 小 n 的 lfcShrink 用哪種收縮？為什麼不用 apeglm？（Q3 頁 36）
+  ## TODO ▶ 小 n 的 lfcShrink 用哪種收縮？為什麼不用 apeglm？（Q3 頁 38）
   shr <- lfcShrink(dds, coef = "tissue_Tumor_vs_Periphery", type = "____", quiet = TRUE)
   #   收縮用 ashr 而不是 apeglm：樣本只有 4–8 個時 apeglm 的先驗太強，會把幾乎所有 LFC 壓成同一個值
   #   （火山圖會變成一條直直的柱子）；ashr 對小 n 穩定得多。報告效應量用收縮後的 LFC。
@@ -112,7 +115,9 @@ de.summary <- data.frame(type = names(de), n_pairs = sapply(de, `[[`, "n.pairs")
                          row.names = NULL)
 print(de.summary)          # 每種型別各有幾對病人、幾個顯著基因，以及這些數字能不能當結論用
 # ★ 「探索性」這個狀態要跟著結果一起走，不能只留在摘要表裡。
-#   單獨打開 06_de_Malignant.csv 的人，看不到那份結果只有 2 對病人——所以直接寫進每一列。
+#   例如做完練習 6-3 把 MIN_CELLS 降到 5，惡性細胞才擠得進來（只有 2 對病人）；單獨打開那份
+#   06_de_Malignant.csv 的人看不到這件事——所以直接寫進每一列。
+#   （本課預設的 MIN_CELLS = 20 下惡性細胞是 0 對病人，連檔案都不會產生。）
 #   這是這門課反覆在講的同一件事：限制要跟著數字走，不要留在另一個檔案裡等人自己去查。
 for (ty in names(de)) {
   res <- de[[ty]]$res
@@ -186,7 +191,7 @@ ggsave("output/figs/06_volcano_all_types.png", wrap_plots(vol, ncol = 2),
 for (ty in names(de))
   ggsave(sprintf("output/figs/06_volcano_%s.png", gsub("[^A-Za-z0-9]+", "_", ty)), vol[[ty]],
          width = 8, height = 7, dpi = 150, bg = "white")
-# 讀火山圖（Q3 頁 38）：右上 = 核心較高且顯著、左上 = 邊緣較高且顯著；中間高高的一根 = 效應小但 p 小，
+# 讀火山圖（Q3 頁 40）：右上 = 核心較高且顯著、左上 = 邊緣較高且顯著；中間高高的一根 = 效應小但 p 小，
 # 通常是表現量高的基因（baseMean 大），要回頭看每樣本點圖確認四位病人方向是否一致。
 # 形狀異常的訊號：所有點擠成一條直柱（LFC 被過度收縮）、或只有正的一側（某個部位樣本幾乎沒有細胞）。
 
@@ -210,7 +215,7 @@ gene.sets <- list(Hallmark = msig("H"),
 sapply(gene.sets, length)
 
 rank_stat <- function(res) {                                # 排序統計量：Wald stat（不是 shrunken LFC）
-  ## TODO ▶ GSEA 的排序統計量用哪一欄？為什麼不是 shrunken LFC？（Q3 頁 36、41–50）
+  ## TODO ▶ GSEA 的排序統計量用哪一欄？為什麼不是 shrunken LFC？（Q3 頁 38、46）
   r <- setNames(res$____, res$gene); r <- r[!is.na(r)]
   r <- r + rnorm(length(r), sd = 1e-6)                      # 打散同分
   sort(r, decreasing = TRUE)
@@ -279,7 +284,11 @@ ggsave(sprintf("output/figs/06_gsea_hypoxia_%s.png", FOCUS.f), p, width = 6, hei
 # 讀法：黑色 tick 是基因集成員在排序中的位置；綠線是 running score；峰值在左 = 富集在「核心較高」那端。
 # leading edge = 峰值之前的成員，就是真正在動的基因：
 foc.hyp <- gsea.all[type == FOCUS & pathway == "HALLMARK_HYPOXIA"]
-if (nrow(foc.hyp)) strsplit(foc.hyp$leadingEdge, ";")[[1]][1:15] else "此型別的 HALLMARK_HYPOXIA 未達顯著"
+if (nrow(foc.hyp))                                          # 先看方向與顯著，再決定要不要讀 leading edge
+  cat(sprintf("%s 的 HALLMARK_HYPOXIA：NES %.3f（正 = 核心較高）、padj %.3g\n",
+              FOCUS, foc.hyp$NES, foc.hyp$padj))
+if (nrow(foc.hyp) && foc.hyp$padj < 0.05) head(strsplit(foc.hyp$leadingEdge, ";")[[1]], 15) else
+  "此型別的 HALLMARK_HYPOXIA 未達顯著，或大小不在 minSize–maxSize 範圍內（沒被檢定）"
 
 # ORA：clusterProfiler 的 GO（離線，org.Hs.eg.db）與 KEGG（要連網）。上調、下調分開做
 library(clusterProfiler); library(org.Hs.eg.db); library(enrichplot)
@@ -356,8 +365,10 @@ saveRDS(gbm4, "output/rds/06_gbm4_final.rds")
 #      挑三個「cell-level 極顯著、pseudobulk 不顯著」的基因畫每樣本點圖，它們長什麼樣？
 #  6-3 把 MIN_CELLS 從 20 改成 5 再改成 50：de.summary 怎麼變？惡性細胞在哪個門檻下才擠得進來？
 #      擠進來之後的火山圖形狀，跟免疫細胞那張比起來如何？這告訴你「把門檻拆掉」的代價是什麼。
-#  6-4 看 Hallmark NES 熱圖：跑得出結果的型別之間，哪些 pathway 同方向、哪些只在其中一種？
+#  6-4 本課的 Hallmark 熱圖只有一欄（只有免疫細胞過得了門檻），所以先做完 6-3、把 MIN_CELLS 降下來，
+#      讓更多型別跑得出結果，再看熱圖：哪些 pathway 同方向、哪些只在其中一種？
 #      同方向的多半來自共同的微環境（例如缺氧），只在一種出現的才是該型別自己的內在程式。
+#      順便想一想：靠降低門檻換來的那幾欄，可信度夠不夠拿來做這個比較？
 #  6-5 ORA 的 universe 改成 NULL（clusterProfiler 預設用全基因組當背景）重跑 FOCUS 的 up 那組：
 #      顯著詞條多了多少？哪一種背景才對，為什麼？
 #  6-6 GSEA 的排序改用 log2FC_shrunk：前五名基因集變了嗎？fgsea 有沒有對 ties 發警告？
@@ -370,5 +381,5 @@ saveRDS(gbm4, "output/rds/06_gbm4_final.rds")
 #      這跟 §2 開頭那句「把所有細胞混在一起比，得到的是組成差異」有什麼關係？
 #      想一想：要怎麼改才能真的比到「同一種免疫細胞在核心與邊緣的差異」？（提示：03 §4b 做過什麼）
 #  進階 用 CellChat（或 liana）比較核心 vs 邊緣的惡性細胞與免疫細胞之間的配體受體軸；
-#      在動手前先寫下：這份資料符合「細胞通訊」那條路的資料前提嗎？（Q3 頁 54）
+#      在動手前先寫下：這份資料符合「細胞通訊」那條路的資料前提嗎？（Q3 頁 58）
 # =====================================================================

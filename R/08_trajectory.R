@@ -75,17 +75,17 @@ cnt.fit <- as.matrix(LayerData(mal1, layer = "counts")[VariableFeatures(mal1), k
 # ⚠ 每多一條 lineage，fitGAM 就多配一組平滑曲線，時間大致等比例增加。
 gam     <- fitGAM(counts = cnt.fit, pseudotime = pt.mat[keep, , drop = FALSE],
                   cellWeights = cw[keep, , drop = FALSE], nknots = 6)
-# 排序要用 waldStat，不能用 pvalue：單一軌跡那次跑，有 38 個基因的 p 直接下溢成 0，
-# order(pvalue) 在它們之間是任意順序——TAGLN（waldStat 91）會排到第一，
-# 而真正最強的 GFAP（849）掉到第六，「前幾名」就變成假的。
-# （這組數字來自改成分支版之前的執行，改用聯合配適後名次會變動，待重跑更新；
-#   但「排序用 waldStat 不用 pvalue」這個結論不會因此改變。）
+# 排序要用 waldStat，不能用 pvalue：本例前 11 個基因的 p 值全部下溢成 0（FN1 一路到 VEGFA），
+# 但它們的 waldStat 從 1,129 到 106，差了十倍以上——照 p 值排，這 11 個誰在前面純粹是任意的，
+# 「前幾名」就變成假的。單一軌跡那次跑也一樣（當時是 38 個基因並列 p = 0）：
+# 這是浮點數的下限，不是資料的性質，換哪一種配適法都會遇到。
 assoc  <- associationTest(gam); assoc <- assoc[order(-assoc$waldStat), ]; head(assoc, 20)
 # 兩欄不要看混，它們排出來的名次常常不一樣：
 #   waldStat  = 變化模式有多「明確」（效應量 ÷ 不確定性）——跟第 38 頁講 DESeq2 的 stat 同一個道理
 #   meanLogFC = 變化幅度有多「大」，而且是絕對值，看不出是升還是降
-# 舊版那次：GPR37L1 幅度 4.94 卻只排第 20（waldStat 132）；COL1A2 幅度僅 0.74 卻排第 9（231）。
-# （同樣是分支版之前的數字，待重跑更新。）挑基因畫圖、決定「誰在動」用 waldStat；報告效應量用 meanLogFC。
+# 本例：FN1 的幅度只有 1.09，卻是 waldStat 最高的第一名（1,129）；CCNA2 的幅度 16.15 是前二十名裡
+# 最大的，名次卻在第三（404）；SOD2 幅度 0.83、排第八（115）。幅度大不等於模式明確。
+# 挑基因畫圖、決定「誰在動」用 waldStat；報告效應量用 meanLogFC。
 write.csv(assoc, "output/tables/08_traj_association.csv")
 if (n.lin > 1) {   # 整體檢定只說「這個基因在某處有變化」，沒說是哪一條分支；要分支各自的結果就加這個
   assoc.lin <- associationTest(gam, lineages = TRUE)
@@ -152,6 +152,14 @@ for (i in seq_len(n.lin)) {
               i, length(ki), mean(mal1$OPC1[e]), mean(mal1$OPC1[l]),
               mean(mal1$MES2[e]), mean(mal1$MES2[l])))
 }
+# 本例的讀法（實跑）：
+#   lineage 1（n = 271）：OPC +0.437 → -0.383、MES +0.764 → +1.554  ← OPC 樣走向 MES 樣
+#   lineage 2（n = 182）：OPC +0.389 → +0.604、MES +0.858 → +0.436  ← 兩個方向都相反
+# 兩條分支走去的不是同一個地方，而且方向相反：一條往間質狀態、一條反而更 OPC 樣。
+# 這跟 §1c 的 diffEndTest 對得起來——2,000 個基因裡有 323 個終點差異達 FDR < 0.05，
+# 不是「同一個狀態被曲線拆成兩半」，是真的分岔。
+# 所以這份資料正確的寫法是「一群 OPC 樣細胞分出兩條路」，不是「OPC 樣轉成 MES 樣」那一句話。
+# 也因為這樣，只看 lineage 1 就下結論會漏掉一半：182 顆細胞走的是另一條。
 
 # 前四名清一色往同一個方向的時候，也該看一眼「到底有沒有東西在反方向走」——沒有的話，
 # 這條軌跡的主軸就不是「A 變成 B」，而只是「某些東西一路消失」，寫法要跟著改。
@@ -256,17 +264,18 @@ if (requireNamespace("monocle", quietly = TRUE)) {
 #   r > 0.8      強一致 → 可以直接寫「結論不依賴工具」
 #   r 0.6–0.8    方向一致但細節有差 → 要有第三個「不是 pseudotime」的獨立佐證才寫結論
 #   r < 0.6      不一致 → 先回頭查起點與細胞子集，這時不該報軌跡
-# ⚠ 這裡引用的數字分兩類，改成分支版之後受影響的程度不一樣，不要一律當成過期：
-#   不受影響：r = 0.757、Neftel OPC 0.437 → -0.383、MES 0.764 → 1.554。
-#     它們只跟 lineage 1 的 pseudotime 有關，而 slingshot 的輸出沒有變——重跑會拿到同樣的值。
-#   待重跑更新：waldStat 的排名與「前四名基因」（GFAP、BCAN、NDRG1、VEGFA）。
-#     聯合配適之後每個基因的 waldStat 會變，名次也可能換人，請以你自己的輸出為準。
-# 當時的讀法是：r = 0.757 落在中間帶，而第三個佐證有兩個，都在 §1 印過——
-#   終點端的狀態分數（Neftel 兩端的 OPC／MES）、以及前幾名基因的方向。
-# 這兩個都不是 pseudotime 的數值，所以「OPC 樣 → MES 樣」這個結論站得住。
+# 本例實跑：r = 0.757（Slingshot vs Monocle2）落在中間帶，所以要有第三個佐證。第三個佐證有兩個，
+#   都在 §1 印過，而且都不是 pseudotime 的數值：
+#     · 終點端的 Neftel 狀態分數（lineage 1：OPC 0.437 → -0.383、MES 0.764 → 1.554）
+#     · associationTest 前四名（FN1、LOX、CCNA2、MLC1）沿 lineage 1 的方向：FN1 與 LOX 一路升、
+#       CCNA2 與 MLC1 一路降；升幅最大的幾個（ENO2、NDRG1、VEGFA、BNIP3、LOX）清一色是缺氧程式。
+#   所以「lineage 1 是 OPC 樣 → MES 樣」這個結論站得住。
+# ⚠ 但只能寫到 lineage 1 為止：lineage 2 的 Neftel 分數兩個方向都相反（OPC 反而升、MES 反而降），
+#   而 diffEndTest 有 323／2,000 個基因終點差異達 FDR < 0.05——這份資料是一個分岔，不是一條路。
+#   把它寫成「OPC 樣轉成 MES 樣」，等於把另外 182 顆細胞走的那條路從結論裡刪掉了。
 # 反過來說：如果只有中間帶的 r 而沒有這兩個佐證，該寫的是「趨勢一致，待驗證」。
-# 有分支的時候還要再加一句：這個結論講的是哪一條 lineage？§1c 的 diffEndTest 若顯示
-#   兩條分支的終點差異很小，那就不該把它們寫成兩種命運。
+# 如果 diffEndTest 反過來顯示兩條分支的終點差異很小，那就不該把它們寫成兩種命運——
+#   那種情況比較可能是同一個狀態被曲線拆成兩半。
 
 sessionInfo()
 
