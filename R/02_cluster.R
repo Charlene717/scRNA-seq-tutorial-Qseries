@@ -4,7 +4,7 @@
 # 對應影片：Q2 頁 25–36（§1 四行 + 週期、§2 PC1 與 nPC、§3 分群、掃描與穩定性檢查、§4 每群 QC、§4b doublet 群診斷）
 # 輸入：output/rds/01_gbm_qc.rds（01_qc.R）
 # 輸出：output/rds/02_gbm_clustered.rds、output/tables/02_per_cluster_qc.csv、output/figs/02_*.png
-# 時間：約 3–5 分鐘
+# 時間：本課這份資料實跑約 1 分鐘
 # =====================================================================
 library(Seurat); library(dplyr); library(ggplot2); library(patchwork)
 set.seed(1234)

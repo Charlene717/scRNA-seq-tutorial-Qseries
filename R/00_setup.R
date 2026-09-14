@@ -9,13 +9,14 @@
 #             ① 00 的工作就是裝套件。裝完在同一個 session 裡馬上用，容易碰到
 #                「舊版命名空間還載在記憶體裡、新版在硬碟上」的錯位——下面 JAGS
 #                那一段本來就寫了「裝完要重開 R」，是同一件事。
-#             ② requireNamespace() 不是只做檢查：載入一個命名空間時，R 會把它的
-#                Depends attach 到搜尋路徑上。本例 GEOquery 的 Depends 是 Biobase，
-#                所以 00 跑完 sessionInfo() 會看到沒有人 library() 過的 Biobase 與
-#                BiocGenerics 出現在 attached 清單裡，而 BiocGenerics 會遮蔽
-#                intersect、union、table、order、unique、match、saveRDS 等 base 函數。
-#                它們是 S4 generic、對 base 型別會 dispatch 回 base，所以多半不會出事——
+#             ② 這一段會載入十幾個套件的命名空間。有些套件在載入時會自己把相依套件
+#                attach 到搜尋路徑上（BiocGenerics 就會遮蔽 intersect、union、table、
+#                order、unique、match、saveRDS 等 base 函數），所以 00 跑完的
+#                sessionInfo() 可能會看到沒有人 library() 過的東西出現在 attached 清單。
+#                被遮蔽的那些是 S4 generic、對 base 型別會 dispatch 回 base，多半不會出事——
 #                但「多半」不等於「沒有改變」，而重開 R 只要兩秒。
+#                （注意 requireNamespace() 本身不會做這件事：它只載入命名空間，不 attach，
+#                 連 Depends 也不會幫你載入——那是 library() 的工作。）
 # 練習資料：
 #   (1) 10x GBM 5k  — Human Glioblastoma Multiforme 3'v3, Cell Ranger 4.0.0, 5,604 cells
 #   (2) GSE84465    — Darmanis et al. 2017, 4 GBM patients, core vs periphery, Smart-seq2

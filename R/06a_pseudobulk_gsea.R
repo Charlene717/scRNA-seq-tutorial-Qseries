@@ -6,7 +6,7 @@
 #       §0 會退而用 output/rds/04_gbm4_unintegrated.rds + 作者的 Neoplastic 標籤當替代惡性標籤
 # 輸出：output/rds/06_gbm4_final.rds；output/tables/06_de_<型別>.csv、06_de_summary_by_type.csv、
 #       06_gsea_all_types.csv、06_ora_go_all_types.csv；output/figs/06_*.png
-# 時間：約 5–10 分鐘（enrichKEGG 需連網）
+# 時間：本課這份資料實跑約 2 分鐘（enrichKEGG 需連網）
 # 套件：本版新增 ashr、reshape2、ggrepel（CRAN）與 clusterProfiler、org.Hs.eg.db、enrichplot（Bioc）——
 #       請先重跑 00_setup.R（已安裝的會自動略過），或執行下面的檢查提示
 # =====================================================================
@@ -84,8 +84,10 @@ pb_de <- function(obj, type, min.cells = MIN_CELLS, min.pairs = MIN_PAIRS) {
   dds <- DESeq(dds, quiet = TRUE)
   raw <- results(dds, name = "tissue_Tumor_vs_Periphery")             # 未收縮：stat 給 GSEA 排序、火山圖
   shr <- lfcShrink(dds, coef = "tissue_Tumor_vs_Periphery", type = "ashr", quiet = TRUE)
-  #   收縮用 ashr 而不是 apeglm：樣本只有 4–8 個時 apeglm 的先驗太強，會把幾乎所有 LFC 壓成同一個值
-  #   （火山圖會變成一條直直的柱子）；ashr 對小 n 穩定得多。報告效應量用收縮後的 LFC。
+  #   收縮用 ashr 而不是 apeglm：在這份資料、這組套件版本下，apeglm 的收縮特別強，幾乎把所有 LFC
+  #   壓成同一個值（火山圖變成一條直直的柱子），換成 ashr 才看得出效應量差異。
+  #   這是對這份資料做過比較之後的選擇，不是「小 n 一律該用 ashr」的通則——換一份資料要自己比一次
+  #   （練習 6-2 就是要你比 raw / apeglm / ashr 三種）。報告效應量用收縮後的 LFC。
   df <- data.frame(gene = rownames(raw), baseMean = raw$baseMean,
                    log2FC = raw$log2FoldChange, log2FC_shrunk = shr$log2FoldChange,
                    stat = raw$stat, pvalue = raw$pvalue, padj = raw$padj) |> arrange(padj)
@@ -260,7 +262,9 @@ gsea_bar <- function(ty) {
   ggplot(g, aes(reorder(label, NES), NES, fill = NES > 0)) + geom_col() + coord_flip() +
     facet_wrap(~ collection, scales = "free_y", ncol = 1) + theme_classic() +
     scale_fill_manual(values = c(`TRUE` = "#D62728", `FALSE` = "#1F77B4"), labels = c("periphery", "core"), name = "higher in") +
-    labs(x = NULL, y = "NES", title = paste0(ty, ": GSEA, padj < 0.05"))
+    labs(x = NULL, y = "NES",
+         title = paste0(ty, ": GSEA, padj < 0.05",
+                        if (de[[ty]]$inference.ok) "" else " [exploratory]"))
 }
 for (ty in names(de)) { p <- gsea_bar(ty); if (!is.null(p))
   ggsave(sprintf("output/figs/06_gsea_bar_%s.png", gsub("[^A-Za-z0-9]+", "_", ty)), p, width = 8, height = 9, dpi = 150, bg = "white") }
@@ -296,7 +300,15 @@ run_ora <- function(d, direction = c("up", "down"), fc = 0.5, p = 0.05) {
     k <- enrichKEGG(ids$ENTREZID, organism = "hsa", universe = uni$ENTREZID, minGSSize = 15)
     if (is.null(k)) NULL else setReadable(k, org.Hs.eg.db, keyType = "ENTREZID")
   }, error = function(e) { message("  KEGG 無結果或無法連網：", conditionMessage(e)); NULL })
-  list(type = d$type, direction = direction, n = length(sig), go = go, kegg = kegg)
+  n.go   <- if (is.null(go))   0L else nrow(as.data.frame(go))
+  n.kegg <- if (is.null(kegg)) 0L else nrow(as.data.frame(kegg))
+  # 0 個詞條也要出聲。先前這裡是靜默的：ora_dot() 回 NULL 就沒圖、沒列、log 也沒字，
+  # 看起來像「這個方向沒跑」，實際上是跑了而且沒有任何詞條顯著——兩者要分得出來。
+  if (!n.go && !n.kegg)
+    message(sprintf("  %-16s %-4s：%d 個顯著基因進了 ORA，但 GO 與 KEGG 都沒有詞條達標（沒有圖、也不會進 CSV）",
+                    d$type, direction, length(sig)))
+  list(type = d$type, direction = direction, n = length(sig), go = go, kegg = kegg,
+       n.pairs = d$n.pairs, inference.ok = d$inference.ok)   # 限制要跟著數字走：狀態一路帶到圖與 CSV
 }
 ora <- list()
 for (ty in names(de)) for (dr in c("up", "down")) ora[[paste(ty, dr)]] <- run_ora(de[[ty]], dr)
@@ -306,7 +318,9 @@ ora_dot <- function(o, which = c("go", "kegg"), n = 12) {
   which <- match.arg(which); e <- o[[which]]
   if (is.null(e) || !nrow(as.data.frame(e))) return(NULL)
   dotplot(e, showCategory = n, font.size = 9) +
-    ggtitle(sprintf("%s, %s in core (%d genes): %s ORA", o$type, o$direction, o$n, toupper(which)))
+    ggtitle(sprintf("%s, %s in core (%d genes, %d pairs)%s: %s ORA",
+                    o$type, o$direction, o$n, o$n.pairs,
+                    if (o$inference.ok) "" else " [exploratory]", toupper(which)))
 }
 for (nm in names(ora)) {
   f <- gsub("[^A-Za-z0-9]+", "_", nm)
@@ -324,7 +338,10 @@ if (!is.null(ora[[foc.up]]) && nrow(as.data.frame(ora[[foc.up]]$go))) {
 }
 ora.tab <- data.table::rbindlist(lapply(ora, function(o) {
   g <- as.data.frame(o$go); if (!nrow(g)) return(NULL)
-  data.frame(type = o$type, direction = o$direction, db = "GO_BP", g[, c("ID", "Description", "GeneRatio", "p.adjust", "Count")])
+  data.frame(type = o$type, direction = o$direction, db = "GO_BP",
+             n_pairs = o$n.pairs,
+             analysis_status = if (o$inference.ok) "inferential" else "exploratory_only",
+             g[, c("ID", "Description", "GeneRatio", "p.adjust", "Count")])
 }), fill = TRUE)
 write.csv(ora.tab, "output/tables/06_ora_go_all_types.csv", row.names = FALSE)
 

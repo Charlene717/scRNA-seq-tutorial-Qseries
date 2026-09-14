@@ -4,8 +4,10 @@
 # 對應影片：Q3 頁 58–70（§1 跑一次 CellChat、§2 路徑層級與六種圖、§3 兩條件比較、§4 LIANA）
 # 輸入：output/rds/06_gbm4_final.rds（06a_pseudobulk_gsea.R；含 malignant 標籤與 type 欄）
 # 輸出：output/rds/07_cellchat/<patient>_<tissue>_min<MIN.CELLS>.rds、output/tables/07_liana_top500.csv、output/figs/07_*.pdf
-# 時間：每個樣本約 5–15 分鐘（8 個樣本，建議先跑一位病人）；跑過的樣本會存成 rds，
-#       第二次執行由 REUSE.RDS 直接讀回，只有 06 的輸出更新時才重算
+# 時間：本課這份資料實跑，八個樣本（其中一個群數不足被跳過）連同六種圖與 LIANA 全跑完約 4 分鐘——
+#       這份資料每個樣本只有 52–800 顆細胞，而且只用 Secreted Signaling 這個子集。
+#       換成 10x 的大樣本會慢很多（單一樣本數萬顆、群又多時，一個樣本就可能要十幾分鐘），
+#       那時才需要 REUSE.RDS：跑過的樣本存成 rds，第二次執行直接讀回，只有 06 的輸出更新時才重算。
 # 安裝：devtools::install_github("jinworks/CellChat")；LIANA：remotes::install_github("saezlab/liana")
 # ⚠ 通訊分析對 doublet 特別敏感：一顆 doublet 同時帶著配體與受體，會憑空生出不存在的通訊對，
 #   而且常常剛好落在「看起來像新發現」的位置。
@@ -17,7 +19,7 @@
 library(Seurat); library(dplyr); library(ggplot2); library(CellChat); library(patchwork)
 set.seed(1234)
 MIN.CELLS <- 20        # CellChat 建網時的細胞數門檻：低於這個數的群「整組」被移除，不是畫得淡一點
-REUSE.RDS <- TRUE      # 已經跑過的樣本直接讀 output/rds/07_cellchat/*.rds（每個樣本 5–15 分鐘，重跑一輪要一小時）
+REUSE.RDS <- TRUE      # 已經跑過的樣本直接讀 output/rds/07_cellchat/*.rds（這份資料整輪只要幾分鐘，快取是為了大資料）
                        # 安全性：只要 06 的輸出比快取新，就自動重跑那個樣本——不會像 inferCNV 那樣默默用舊結果
 in.rds <- "output/rds/06_gbm4_final.rds"
 gbm4 <- readRDS(in.rds)

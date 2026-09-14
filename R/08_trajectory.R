@@ -5,7 +5,8 @@
 # 輸入：output/rds/06_gbm4_final.rds
 # 輸出：output/figs/08_*.pdf、output/tables/08_traj_association.csv
 #       （有分支時另加 08_pseudotime_lineages.pdf、08_traj_association_bylineage.csv、08_traj_diffend.csv）
-# 時間：§1 約 5–10 分鐘（每多一條 lineage，fitGAM 約等比例增加）；§2 約 2 分鐘；§3（選配）約 5–10 分鐘
+# 時間：本課這份資料實跑 §1 + §3 共約 4 分鐘（每多一條 lineage，fitGAM 約等比例增加）；
+#       §2 的 Monocle3 為選配，未安裝時會跳過
 # 安裝（選配段）：見 00_setup.R——monocle3 + SeuratWrappers（GitHub）、monocle（Bioconductor）
 # 前提：軌跡假設「連續過程」；跨病人混做會把病人差異當成軌跡，所以只在一位病人的惡性細胞內做。
 # ⚠ 這份資料在 BT_S2 上會跑出分支（不只一條 lineage）。分支不是錯誤：§1 會照實際條數配權重，
@@ -92,8 +93,8 @@ if (n.lin > 1) {   # 整體檢定只說「這個基因在某處有變化」，�
   write.csv(assoc.lin[order(-assoc.lin$waldStat), ], "output/tables/08_traj_association_bylineage.csv")
 }
 # 畫 smoothers 的基因必須在 gam 模型裡（= 這個子集的 VariableFeatures）。那要畫哪四個？直接取關聯最強的前四名，不要自己先想好名字再去湊——
-# 原本寫死 c("OLIG1","SOX4","CD44","VIM")，結果 SOX4／CD44／VIM 根本不在這個子集的
-# 2,000 個高變異基因裡，四格有三格是被 fallback 補進來的，投影片也就對不上。
+# 先想好要畫哪幾個名字再去湊，多半湊不到：像 SOX4／CD44／VIM 就不在這個子集的 2,000 個高變異
+# 基因裡，硬畫只會讓四格裡有三格是 fallback 補進來的，跟你講的故事對不上。
 show.genes <- head(rownames(assoc), 4)
 cat("smoothers 畫這些基因：", paste(show.genes, collapse = ", "), "\n")
 pdf("output/figs/08_smoothers.pdf", 8, 6)

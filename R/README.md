@@ -18,18 +18,20 @@ Q 系列課程的十二支 R 腳本，從讀檔一路做到反卷積與存活分
 
 | 腳本 | 做什麼 | 投影片 | 時間 |
 |---|---|---|---|
-| [`00_setup.R`](00_setup.R) | 裝套件、下載資料與基因座標檔、建資料夾 | Q2 P7–8 | 10–20 分 |
-| [`01_qc.R`](01_qc.R) | SoupX（選做）→ 讀檔 → QC 三指標 → MAD 閾值 → DoubletFinder | Q2 P8–22 | 3–5 分 |
-| [`02_cluster.R`](02_cluster.R) | 前處理與週期分數 → nPC → 解析度掃描 → 穩定性檢查 → doublet 群診斷 | Q2 P25–36 | 3–5 分 |
-| [`03_annotate.R`](03_annotate.R) | marker 面板 → SingleR → 掛名字 → 免疫亞群 → Neftel 狀態分數 → 交付 | Q2 P38–64 | 10–15 分 |
-| [`04_multipatient.R`](04_multipatient.R) | 載入 GSE84465 → 未整合基線 → CCA + Harmony → 正負對照 → LISI | Q3 P8–17 | 5–10 分 |
-| [`05_infercnv.R`](05_infercnv.R) | inferCNV → CNV 分數與相關 → 三角驗證 → 與作者標註比對一致性 | Q3 P21–28 | 10–30 分 |
-| [`06a_pseudobulk_gsea.R`](06a_pseudobulk_gsea.R) | 組成分析 → 每型別 pseudobulk + 配對 DESeq2 → 火山圖 → GSEA / ORA | Q3 P29–51 | 5–10 分 |
-| [`06b_cell_level_de.R`](06b_cell_level_de.R) | 不能 pseudobulk 時的備案：MAST + 病人共變量、逐病人一致性、標籤置換 | Q3 P53–54 | 3–5 分 |
-| [`07_cellchat.R`](07_cellchat.R) | 每樣本各跑 CellChat → 六種圖 → 兩條件比較 → LIANA 交叉驗證 | Q3 P58–71 | 每樣本 5–15 分 |
-| [`08_trajectory.R`](08_trajectory.R) | 單一病人惡性細胞的軌跡：Slingshot → tradeSeq → Monocle 比較 | Q3 P72–75 | 5–10 分 |
-| [`09_activity.R`](09_activity.R) | PROGENy 路徑活性 → 以病人為單位配對比較 → SCENIC（選配） | Q3 P76–78 | 2 分 |
-| [`10_deconv_survival.R`](10_deconv_survival.R) | MuSiC 反卷積 TCGA-GBM → KM / Cox 存活分析 | Q3 P79–82 | 15 分（含下載） |
+| [`00_setup.R`](00_setup.R) | 裝套件、下載資料與基因座標檔、建資料夾 | Q2 P7–8 | 首次 10–20 分；套件已裝好時約 1 分 |
+| [`01_qc.R`](01_qc.R) | SoupX（選做）→ 讀檔 → QC 三指標 → MAD 閾值 → DoubletFinder | Q2 P8–22 | 約 3 分 |
+| [`02_cluster.R`](02_cluster.R) | 前處理與週期分數 → nPC → 解析度掃描 → 穩定性檢查 → doublet 群診斷 | Q2 P25–36 | 約 1 分 |
+| [`03_annotate.R`](03_annotate.R) | marker 面板 → SingleR → 掛名字 → 免疫亞群 → Neftel 狀態分數 → 交付 | Q2 P38–64 | 約 2 分 |
+| [`04_multipatient.R`](04_multipatient.R) | 載入 GSE84465 → 未整合基線 → CCA + Harmony → 正負對照 → LISI | Q3 P8–17 | 約 2 分 |
+| [`05_infercnv.R`](05_infercnv.R) | inferCNV → CNV 分數與相關 → 三角驗證 → 與作者標註比對一致性 | Q3 P21–28 | 約 10 分 |
+| [`06a_pseudobulk_gsea.R`](06a_pseudobulk_gsea.R) | 組成分析 → 每型別 pseudobulk + 配對 DESeq2 → 火山圖 → GSEA / ORA | Q3 P29–51 | 約 2 分 |
+| [`06b_cell_level_de.R`](06b_cell_level_de.R) | 不能 pseudobulk 時的備案：MAST + 病人共變量、逐病人一致性、標籤置換 | Q3 P53–54 | 約 2 分 |
+| [`07_cellchat.R`](07_cellchat.R) | 每樣本各跑 CellChat → 六種圖 → 兩條件比較 → LIANA 交叉驗證 | Q3 P58–71 | 約 4 分（八個樣本） |
+| [`08_trajectory.R`](08_trajectory.R) | 單一病人惡性細胞的軌跡：Slingshot → tradeSeq → Monocle 比較 | Q3 P72–75 | 約 4 分 |
+| [`09_activity.R`](09_activity.R) | PROGENy 路徑活性 → 以病人為單位配對比較 → SCENIC（選配） | Q3 P76–78 | 約 1 分 |
+| [`10_deconv_survival.R`](10_deconv_survival.R) | MuSiC 反卷積 TCGA-GBM → KM / Cox 存活分析 | Q3 P79–82 | 約 3 分（TCGA 下載另計） |
+
+> 上表的時間是 2026-09-12 在 Windows、R 4.4.1、Seurat 5.3.0 從乾淨環境跑完 00–10 的實測值（12 支共約 34 分鐘）。`05` 隨機器與細胞數差異大，`10` 的 TCGA 下載目錄在專案之外，換一個新專案資料夾也不會重新下載。
 
 用法、作業格式與**常見錯誤對照表**見 [`練習手冊.md`](練習手冊.md)。
 

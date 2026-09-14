@@ -4,7 +4,8 @@
 # 對應影片：Q3 頁 79–82（§1 反卷積、§2 KM 與 Cox）
 # 輸入：output/rds/06_gbm4_final.rds；TCGA-GBM Bulk（TCGAbiolinks 自動下載，需連網）
 # 輸出：output/tables/10_deconv_tcga_gbm.csv、output/figs/10_km_*.pdf
-# 時間：TCGA 下載約 10 分鐘（僅第一次），其餘約 5 分鐘
+# 時間：TCGA 下載約 10 分鐘，只有第一次要等——注意下載目錄在專案外（見 §1 的 GDC_DIR），
+#       所以就算換一個全新的專案資料夾，也是直接命中舊檔案。其餘約 3 分鐘。
 # ⚠ 這支唯一會「不是你的錯」卻跑不完的地方是 GDCprepare：它在下載之外還要再連一次 GDC API
 #   補臨床欄位，那支 API 偶爾不通。腳本會自動重試三次；真的連不上就過幾分鐘再跑，不必重新下載。
 # 這是「單細胞產生假說 → 公開世代驗證」那條路：用 4 位病人的型別比例假說，到 TCGA 的 Bulk 世代驗證。
@@ -34,6 +35,14 @@ q <- GDCquery(project = "TCGA-GBM", data.category = "Transcriptome Profiling",
 #   （已下載過的檔案會自動跳過；重跑只補缺的。macOS / Linux 沒這個限制，仍建議獨立資料夾。）
 GDC_DIR <- if (.Platform$OS.type == "windows") "C:/GDCdata" else "~/GDCdata"
 dir.create(GDC_DIR, showWarnings = FALSE, recursive = TRUE)
+# ⚠ 這個目錄在專案資料夾之外，不會隨著專案一起搬、也不會被「重開一個乾淨的專案」清掉。
+#   好處是不用重下載，代價是：光看「這支跑很快」無法判斷資料是今天抓的還是半年前的。
+#   所以先把位置與檔案數印出來，寫方法段時才知道自己用的是哪一批。
+gdc.n <- length(list.files(GDC_DIR, recursive = TRUE, pattern = "\\.tsv$"))
+cat(sprintf("TCGA 下載目錄：%s（現有 %d 個表現量檔）\n", normalizePath(GDC_DIR, winslash = "/", mustWork = FALSE), gdc.n))
+if (gdc.n) cat("  其中最舊/最新檔案時間：",
+               format(range(file.mtime(list.files(GDC_DIR, recursive = TRUE, pattern = "\\.tsv$", full.names = TRUE))),
+                      "%Y-%m-%d"), "\n")
 GDCdownload(q, directory = GDC_DIR, files.per.chunk = 50)
 # GDCdownload 的 api 方法是「抓一包 tar → 在『當前工作目錄』解開 → 把資料檔搬進 directory」。
 # tar 裡附的 MANIFEST.txt 不在搬移名單內，會留在專案根目錄；而且它只保留最後一批的內容，
@@ -162,6 +171,11 @@ cat("被折疊過的符號 ", length(collapsed.sym), " 個，其中進到共同�
     sum(collapsed.sym %in% common), " 個\n", sep = "")
 est <- music_prop(bulk.mtx = bulk.mtx[common, ], sc.sce = ref[common, ], clusters = "celltype_l1", samples = "patient")
 prop <- as.data.frame(est$Est.prop.weighted); write.csv(prop, "output/tables/10_deconv_tcga_gbm.csv")
+# 先看一眼估出來的東西合不合理，再拿去做存活分析——反卷積會給你數字，不會告訴你數字荒謬。
+# 本課這份結果：Malignant 0.53、Other 0.25、Immune 0.11、Vascular 0.09、Oligo 0.02，
+# 惡性占一半以上、免疫一成，對 GBM 的整塊組織來說是合理的量級。
+# 若某一類接近 0 或接近 1、或每個樣本都給幾乎一樣的比例，先回頭查參考集與共同基因數，不要往下做。
+cat("\n== 反卷積平均比例（", nrow(prop), " 個樣本）==\n", sep = ""); print(round(colMeans(prop), 3))
 ## ---- 2. survival ---------------------------------------------------- Q3 頁 82
 # 存活：免疫細胞「總」比例的上下半
 # ⚠ 命名要跟算出來的東西一致。這裡的 prop$Immune 是所有免疫細胞合起來的比例，
