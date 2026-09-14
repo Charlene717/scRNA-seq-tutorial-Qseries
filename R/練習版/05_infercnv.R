@@ -4,7 +4,8 @@
 # 對應影片：Q3 頁 21–28（§1 輸入與執行、§2 兩個數字、§3 三角驗證）
 # 輸入：output/rds/04_gbm4_unintegrated.rds（04_multipatient.R；用「未整合」那份）
 # 輸出：output/rds/05_infercnv/（inferCNV 原生輸出）、output/rds/05_gbm4_malignant.rds、output/figs/05_*（png 與 pdf 各一份）
-# 時間：inferCNV 本課這份資料實跑約 10 分鐘（denoise、無 HMM）；機器與細胞數不同會差很多
+# 時間：inferCNV 同一台機器三輪實測 10–35 分鐘（denoise、無 HMM）——同一份資料就差三倍，
+#       這一支最吃機器當下的負載，換機器或換細胞數差更多
 # 注意：inferCNV 底層的 rjags 需要「系統層級」的 JAGS 程式（不是 R 套件，R 裝不了它），
 #       必須先在作業系統安裝 JAGS 4.x 再重開 R；未安裝的話本腳本會在 §1 直接停下並提示。
 #       還沒裝 JAGS 前，06–08 可先用 celltype_author 的 Neoplastic 當替代惡性標籤測試（見 06 §0）。
