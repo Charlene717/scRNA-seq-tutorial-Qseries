@@ -4,7 +4,7 @@
 # 對應影片：Q2 頁 38–64（§1 譜系標誌與 marker 面板、§2 FindAllMarkers 與篩選、§3 SingleR、§4 命名、§4b 免疫亞群、§5 Neftel 分數與三種算法、§5b 品質檢查、§6 交付與存檔）
 # 輸入：output/rds/02_gbm_clustered.rds（02_cluster.R）
 # 輸出：output/rds/03_gbm_annotated.rds、output/tables/03_markers.csv（另有 03_immune_markers、03_composition）
-# 時間：約 5–10 分鐘（SingleR 首次下載參考集約 1 GB，之後有快取）
+# 時間：本課這份資料實跑約 2 分鐘（SingleR 首次下載參考集約 1 GB 另計，之後有快取）
 # =====================================================================
 # ---------------------------------------------------------------------
 # 【練習版】把 ____ 填上再執行。每個空格上方的「## TODO ▶」寫了要回答的問題與影片頁碼。
@@ -84,7 +84,9 @@ gbm$singler <- unname(setNames(pred$labels, rownames(pred))[as.character(gbm$seu
 # ★ 依照「你自己的」DotPlot 與 SingleR 結果填寫；下面只是範例對應，每份資料的編號都不同 ★
 # 範例對應（seed = 1234、Seurat 5.3、npc = 25、res 0.5、k = 20 跑 GBM 5k 得到的 13 群）
 # ※ 這是「範例」，不是答案：務必先看你自己的 03_dotplot_panel.png 與上面的 xval 表再定案。
-new.ids <- c("0"  = "Glial (undetermined)",           # C1QL1 / NPSR1：膠質／惡性（NPC 樣）
+new.ids <- c("0"  = "Glial (undetermined)",           # C1QL1 / C1QL4 / NPSR1：膠質／惡性（NPC 樣）
+              #   兩個 C1QL 都在這群的前五名。引用時以 C1QL1 為主：它在 90.6% 的群內細胞測得到
+              #   （C1QL4 只有 33.7%），當「這群是什麼」的門牌，覆蓋率比 logFC 重要。
              "1"  = "Oligodendrocyte",                # MAG / KLK6 / HAPLN2（SingleR 給 Astrocyte 是參考集沒有寡樹突）
              "2"  = "Glial (undetermined)",           # SAA1 / CP / CLU：星狀樣（AC 樣）——惡性與否待多重證據判定
              "3"  = "Glial (undetermined)",           # TRIB3 / IGFBP3 / VGF：壓力／缺氧樣惡性狀態
@@ -167,8 +169,8 @@ write.csv(imm.markers, "output/tables/03_immune_markers.csv", row.names = FALSE)
 # 注意：這裡「不」直接寫 Malignant。marker 只能定譜系：膠質瘤惡性細胞的正常對應細胞（星狀、OPC）
 #       就在同一塊組織裡，表現量高度重疊，所以沒有任何一組 marker 能區分惡性與正常膠質。
 #       在證據到位前就叫 Malignant，就是錯誤二（用型別標籤預設了結論）。
-# ★ Cycling 要排在 Glial 前面。前一版把兩者都用 grepl("undetermined") 抓，結果
-#   Cycling (undetermined) 被歸進 Glial——那正好違反上面剛講的錯誤三（增殖是狀態，不是型別）。
+# ★ Cycling 要排在 Glial 前面。兩者的名字都含 "undetermined"，若用 grepl("undetermined") 一起抓，
+#   Cycling (undetermined) 會被歸進 Glial——那正好違反上面剛講的錯誤三（增殖是狀態，不是型別）。
 #   譜系（l1）與狀態（l3）是兩個獨立欄位，不要混在同一欄。
 gbm$celltype_l1 <- dplyr::case_when(
   grepl("Cycling", gbm$celltype)                            ~ "Undetermined",   # 只增殖，看不出譜系

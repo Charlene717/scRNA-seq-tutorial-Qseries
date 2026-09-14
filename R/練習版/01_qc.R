@@ -4,7 +4,7 @@
 # 對應影片：Q2 頁 8–22（§0 SoupX 選做、§1 讀檔與初步檢視、§2 三指標、§3 MAD 三條線、§4 DoubletFinder）
 # 輸入：data/gbm5k/filtered_feature_bc_matrix/（由 00_setup.R 準備）
 # 輸出：output/rds/01_gbm_raw.rds（三條 QC 線之前）、output/rds/01_gbm_qc.rds（過濾後 + doublet 標記）
-# 時間：約 8–15 分鐘（DoubletFinder 的 pK 掃描本身就要數分鐘）
+# 時間：本課這份資料實跑約 3 分鐘（DoubletFinder 的 pK 掃描占掉大半）
 # =====================================================================
 # ---------------------------------------------------------------------
 # 【練習版】把 ____ 填上再執行。每個空格上方的「## TODO ▶」寫了要回答的問題與影片頁碼。
@@ -50,7 +50,12 @@ dim(gbm)
 cnt <- LayerData(gbm, layer = "counts")
 1 - Matrix::nnzero(cnt) / prod(dim(cnt))                # 稀疏度（稀疏矩陣不能直接 mean(cnt == 0)）
 # 判讀：多數 10x 資料 > 0.9；腫瘤（惡性細胞 RNA 量大、深度高）常見 0.85–0.90，本份約 0.86 屬正常。
-# 真正該警覺的是 < 0.8（可能讀到 raw 矩陣或多重樣本合併）或 > 0.98（深度太淺）。
+# 這是「資料型態與深度」的 sanity check，不是 QC 門檻，沒有通用的及格線。
+# 跟同平台、同 assay 的預期差很多時，回頭查這兩個方向：
+#   偏高（例如 > 0.98）→ 可能讀到 raw 矩陣（未過濾的矩陣含幾十萬個幾乎全空的 barcode，
+#     稀疏度會被推到 0.99 以上），或測序深度太淺。
+#   偏低（例如 < 0.8）→ 可能不是 3' 標籤法（Smart-seq2 這類全長資料本來就密），
+#     或矩陣已經先被過濾、合併、彙整過。
 summary(Matrix::colSums(cnt))                           # 每顆細胞 UMI 總數
 grep("^MT-", rownames(gbm), value = TRUE)               # 空的 → 物種或基因名有問題
 cnt[intersect(c("PTPRC", "SOX2", "MBP"), rownames(cnt)), 1:5]   # 先 intersect：min.cells 可能已刪掉其中之一
@@ -105,9 +110,10 @@ gbm <- subset(gbm, subset = percent.mt < mt.hi & nFeature_RNA > nf.lo & nCount_R
 n.after  <- ncol(gbm)
 cat(sprintf("QC：%d → %d 顆（濾掉 %d，%.1f%%）\n", n.before, n.after, n.before - n.after,
             100 * (n.before - n.after) / n.before))
-# 方法段模板（把數字換成你的）：
-# 「細胞保留條件：percent.mt < median + 3×MAD（= X%）、nFeature 與 nCount 在 log10 尺度
-#   median ± 3×MAD 內；N0 顆中保留 N1 顆。」
+# 方法段模板（把數字換成你的）。三個指標的方向不一樣，要分開寫，不要寫成「都在 ±3×MAD 內」：
+# 「細胞保留條件：percent.mt < median + 3×MAD（= X%）；log10(nFeature_RNA) > median − 3×MAD
+#   （= X 個基因）；log10(nCount_RNA) < median + 3×MAD（= X UMI，本例移除 0 顆）。
+#   N0 顆中保留 N1 顆。」
 
 ## ---- 4. doublets --------------------------------------------------- Q2 頁 20–22
 # 主工具：DoubletFinder（McGinnis et al. 2019, Cell Systems）。

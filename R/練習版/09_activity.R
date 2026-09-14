@@ -4,7 +4,7 @@
 # 對應影片：Q3 頁 76–78（§1 PROGENy 路徑活性與條件比較、§2 SCENIC regulon）
 # 輸入：output/rds/06_gbm4_final.rds
 # 輸出：output/figs/09_*.pdf、output/tables/09_progeny_*.csv
-# 時間：decoupleR 約 2 分鐘；SCENIC（pySCENIC，Python）數小時，為選配
+# 時間：本課這份資料實跑約 0.6 分鐘；SCENIC（pySCENIC，Python）數小時，為選配
 # PROGENy 問「哪條訊號路徑活著」（footprint 基因）；SCENIC 問「哪個轉錄因子在驅動」（regulon）。
 # =====================================================================
 # ---------------------------------------------------------------------
@@ -25,6 +25,9 @@ for (d in c("output/figs", "output/rds", "output/tables")) dir.create(d, recursi
 library(decoupleR)
 ## TODO ▶ PROGENy 用哪個物種、每條路徑取前幾個 footprint 基因？（Q3 頁 77–78）
 net <- get_progeny(organism = "____", top = ____)
+# ⚠ OmnipathR 會把 PROGENy 當靜態表從本機快取讀回來（log 會印 Accessing `PROGENy` as a static table）。
+#   好處是可重現，但代價是「它不一定是今天的版本」。方法段要寫的是「PROGENy 模型（decoupleR 取得，
+#   top 500 footprint 基因）」加上套件版本，不要寫成「本次分析從 OmniPath 即時取得」。
 mat <- as.matrix(LayerData(gbm4, layer = "data"))
 act <- run_mlm(mat = mat, net = net, .source = "source", .target = "target", .mor = "weight", minsize = 5)
 act.w <- act |> tidyr::pivot_wider(id_cols = source, names_from = condition, values_from = score) |>
@@ -53,10 +56,15 @@ cat("配得成對的病人數 =", sum(paired), "／ 其中每格都 ≥", MINCEL
     "／ 共", nrow(pa), "位\n")
 if (any(thin)) cat("排除：", paste(pa$patient[thin], collapse = "、"),
                    "有一側不到", MINCELL, "顆惡性細胞，那一格的平均只是幾顆細胞的平均\n")
-# ★ 門檻要真的擋得住。前一版只把不足的病人印成警告，t.test 照跑照印 p 值——
-#   那等於嘴上說不可信、手上還是產出了一個正式的統計結果。這裡改成：不夠就不做推論，
-#   只畫描述性的配對圖。這正是這門課要教的：軟體跑得動，不代表這個分析該跑。
+# ★ 門檻要真的擋得住：不夠就不做推論，只畫描述性的配對圖。
+#   如果門檻只印一句警告、檢定照樣跑照樣印 p 值，那等於嘴上說不可信、手上還是產出了一個
+#   正式的統計結果。這正是這門課要教的：軟體跑得動，不代表這個分析該跑。
+MIN.PAIRS.INF <- 4    # 跟 06a 的 MIN_PAIRS_INF 同一條政策：少於四對病人只當探索性，不當推論結論
 if (sum(ok) >= 3) {
+  if (sum(ok) < MIN.PAIRS.INF)
+    cat("\n⚠ 每格夠厚的配對病人只有 ", sum(ok), " 位（< ", MIN.PAIRS.INF, "）：下面這個檢定只當\n",
+        "   探索性的方向檢查，p 值不要當成正式驗證引用。這跟 06a 對 pseudobulk DE 用的是同一條線，\n",
+        "   全課一致——不會上一章 3 對只能探索、這一章 3 對就變成正式推論。\n", sep = "")
   print(t.test(pa$hyp_Tumor[ok], pa$hyp_Periphery[ok], paired = TRUE))
 } else {
   cat("\n>> 每格 ≥", MINCELL, "顆的配對病人只有", sum(ok), "位，不做配對檢定。\n",
