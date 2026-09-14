@@ -6,7 +6,7 @@
 #       §0 會退而用 output/rds/04_gbm4_unintegrated.rds + 作者的 Neoplastic 標籤當替代惡性標籤
 # 輸出：output/rds/06_gbm4_final.rds；output/tables/06_de_<型別>.csv、06_de_summary_by_type.csv、
 #       06_gsea_all_types.csv、06_ora_go_all_types.csv；output/figs/06_*（png 與 pdf 各一份）
-# 時間：本課這份資料實跑約 2 分鐘（enrichKEGG 需連網）
+# 時間：同一台機器三輪實測 2–5 分鐘（enrichKEGG 需連網）
 # 套件：本版新增 ashr、reshape2、ggrepel（CRAN）與 clusterProfiler、org.Hs.eg.db、enrichplot（Bioc）——
 #       請先重跑 00_setup.R（已安裝的會自動略過），或執行下面的檢查提示
 # =====================================================================

@@ -5,7 +5,7 @@
 # 輸入：output/rds/02_gbm_clustered.rds（02_cluster.R）
 # 輸出：output/rds/03_gbm_annotated.rds、output/tables/03_markers.csv（另有 03_immune_markers、03_composition）、
 #       output/figs/03_*（png 與 pdf 各一份）
-# 時間：本課這份資料實跑約 2 分鐘（SingleR 首次下載參考集約 1 GB 另計，之後有快取）
+# 時間：同一台機器三輪實測 2–5 分鐘（SingleR 首次下載參考集約 1 GB 另計，之後有快取）
 # =====================================================================
 library(Seurat); library(dplyr); library(ggplot2); library(patchwork)
 set.seed(1234)

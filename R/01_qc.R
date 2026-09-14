@@ -5,7 +5,7 @@
 # 輸入：data/gbm5k/filtered_feature_bc_matrix/（由 00_setup.R 準備）
 # 輸出：output/rds/01_gbm_raw.rds（三條 QC 線之前）、output/rds/01_gbm_qc.rds（過濾後 + doublet 標記）、
 #       output/figs/01_*（png 與 pdf 各一份）
-# 時間：本課這份資料實跑約 3 分鐘（DoubletFinder 的 pK 掃描占掉大半）
+# 時間：同一台機器三輪實測 3–6 分鐘（DoubletFinder 的 pK 掃描占掉大半）
 # =====================================================================
 library(Seurat); library(dplyr); library(ggplot2); library(patchwork)
 set.seed(1234)
@@ -135,7 +135,11 @@ tmp <- FindNeighbors(tmp, dims = 1:20, verbose = FALSE) |>
 
 # (a) pK：DoubletFinder 唯一需要調的參數（鄰域大小）。掃一遍，取 BCmetric 最高的那個。
 sweep.stats <- summarizeSweep(paramSweep(tmp, PCs = 1:20, sct = FALSE), GT = FALSE)
-bcmvn        <- find.pK(sweep.stats)
+# find.pK() 除了回傳表格，還會「順手畫一張圖」，而且關不掉（DoubletFinder 的設計，沒有參數可擋）。
+# 互動式執行時那張圖跳到 RStudio 的繪圖窗，無害；但用 Rscript 批次跑時，預設繪圖裝置是 pdf，
+# 它會在工作目錄長出一個 Rplots.pdf。pdf(NULL) 開一個「空裝置」把那張圖接走，回傳值照樣拿得到。
+# 下面 01_doubletfinder_pK 那張才是我們要的版本（標了選到的 pK，而且有存檔）。
+grDevices::pdf(NULL); bcmvn <- find.pK(sweep.stats); grDevices::dev.off()
 bcmvn$pK.num <- as.numeric(as.character(bcmvn$pK))
 pK.sel       <- bcmvn$pK.num[which.max(bcmvn$BCmetric)]
 p <- ggplot(bcmvn, aes(pK.num, BCmetric)) + geom_line() + geom_point(size = 1.5) +

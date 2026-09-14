@@ -10,7 +10,7 @@
 # 輸入：output/rds/06_gbm4_final.rds（06a 跑過即有；此處以 OPC 為例——它在 06a 因兩部位都夠的病人只有
 #       1 位而被跳過，正是「不能 pseudobulk」的實例）
 # 輸出：output/tables/06b_de_<型別>_cell_level.csv、output/figs/06b_*（png 與 pdf 各一份）
-# 時間：本課這份資料實跑約 2 分鐘
+# 時間：同一台機器三輪實測 2–3 分鐘
 # =====================================================================
 library(Seurat); library(dplyr); library(ggplot2); library(patchwork)
 set.seed(1234)
@@ -118,7 +118,7 @@ if (degenerate) {
        geom_point(size = 5) +
        geom_text(aes(label = sprintf("%s = %d", k, x)), vjust = -1.2, size = 3.5, show.legend = FALSE) +
        scale_colour_manual(values = c(permuted = "grey50", real = "#D62728"), name = NULL) +
-       scale_y_continuous(limits = c(-0.3, 0.5), breaks = NULL, name = NULL) +
+       scale_y_continuous(limits = c(-0.5, 0.5), breaks = NULL, name = NULL) +   # 對稱 → 兩點落在畫面中間
        expand_limits(x = 0) + theme_classic() +
        labs(x = "significant genes under permuted labels",
             title = sprintf("%s: real vs permuted", TYPE),
@@ -134,7 +134,7 @@ if (degenerate) {
             subtitle = sprintf("真實 %d｜置換 %d 次，中位數 %.0f，範圍 %d–%d",
                                n.real, n.perm, median(perm.sig), min(perm.sig), max(perm.sig)))
 }
-fig(p, "06b_permutation", 7, 4.5)
+fig(p, "06b_permutation", 7, 3.6)
 
 ## >>> 參考答案 ------------------------------------------------------
 # 本課這份資料的結果（實跑驗證，TYPE = "OPC"）：

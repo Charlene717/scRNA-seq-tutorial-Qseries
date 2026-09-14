@@ -6,7 +6,7 @@
 # 輸出：output/rds/04_gbm4_unintegrated.rds、output/rds/04_gbm4_integrated.rds（含 integrated.cca 與 harmony 兩個 reduction）
 #       output/tables/04_patient_entropy_raw.csv、04_integration_controls.csv、04_lisi_by_celltype.csv
 #       output/figs/04_*（png 與 pdf 各一份）
-# 時間：本課這份資料實跑約 2 分鐘（series matrix 由 00 先下載好；沒下載的話這裡會連網）
+# 時間：同一台機器三輪實測 2–6 分鐘（series matrix 由 00 先下載好；沒下載的話這裡會連網）
 # =====================================================================
 library(Seurat); library(dplyr); library(ggplot2); library(patchwork)
 set.seed(1234)
