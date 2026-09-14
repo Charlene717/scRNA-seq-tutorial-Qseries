@@ -3,7 +3,8 @@
 #
 # 對應影片：Q2 頁 8–22（§0 SoupX 選做、§1 讀檔與初步檢視、§2 三指標、§3 MAD 三條線、§4 DoubletFinder）
 # 輸入：data/gbm5k/filtered_feature_bc_matrix/（由 00_setup.R 準備）
-# 輸出：output/rds/01_gbm_raw.rds（三條 QC 線之前）、output/rds/01_gbm_qc.rds（過濾後 + doublet 標記）
+# 輸出：output/rds/01_gbm_raw.rds（三條 QC 線之前）、output/rds/01_gbm_qc.rds（過濾後 + doublet 標記）、
+#       output/figs/01_*（png 與 pdf 各一份）
 # 時間：本課這份資料實跑約 3 分鐘（DoubletFinder 的 pK 掃描占掉大半）
 # =====================================================================
 # ---------------------------------------------------------------------
@@ -13,6 +14,11 @@
 library(Seurat); library(dplyr); library(ggplot2); library(patchwork)
 set.seed(1234)
 for (d in c("output/figs", "output/rds", "output/tables")) dir.create(d, recursive = TRUE, showWarnings = FALSE)   # 圖檔資料夾先建好，後面 ggsave 才不會失敗
+# 每張圖都存兩份：png 貼報告、pdf 是向量檔放大不糊。一律把「圖物件」傳進來，不要先印出來——
+# 直接印再 ggsave() 會在專案根目錄留下一個 Rplots.pdf（Rscript 的預設繪圖裝置就是 pdf）。
+fig <- function(p, name, w, h, dpi = 150) for (e in c("png", "pdf"))
+  ggsave(file.path("output/figs", paste0(name, ".", e)), p, width = w, height = h, dpi = dpi,
+         bg = "white", limitsize = FALSE)
 
 ## ---- 0. ambient-rna (optional) ------------------------------------- Q2 頁 10–12
 # 需要 Cell Ranger 的 raw + filtered 兩個矩陣同時在同一個 outs/ 資料夾。
@@ -70,11 +76,11 @@ saveRDS(gbm, "output/rds/01_gbm_raw.rds")
 
 p <- VlnPlot(gbm, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"),
              ncol = 3, pt.size = 0.05)
-ggsave("output/figs/01_qc_violin.png", p, width = 11, height = 4.5, dpi = 150, bg = "white")
+fig(p, "01_qc_violin", 11, 4.5)
 
 p <- FeatureScatter(gbm, "nCount_RNA", "percent.mt") +
      FeatureScatter(gbm, "nCount_RNA", "nFeature_RNA")
-ggsave("output/figs/01_qc_scatter.png", p, width = 11, height = 4.5, dpi = 150, bg = "white")
+fig(p, "01_qc_scatter", 11, 4.5)
 # 看圖：percent.mt 有沒有第二個峰？散點圖三個角落各是什麼？
 
 ## ---- 3. thresholds ------------------------------------------------- Q2 頁 17–19
@@ -97,7 +103,7 @@ p <- ggplot(gbm@meta.data, aes(percent.mt)) + geom_histogram(bins = 80, fill = "
      geom_vline(xintercept = 5, linetype = 3) + geom_vline(xintercept = mt.hi, colour = "#C0392B") +
      annotate("text", x = mt.hi, y = Inf, vjust = 2, hjust = -0.1, colour = "#C0392B",
               label = sprintf("median + 3×MAD = %.1f%%", mt.hi)) + theme_classic()
-ggsave("output/figs/01_mt_threshold.png", p, width = 7, height = 4, dpi = 150, bg = "white")
+fig(p, "01_mt_threshold", 7, 4)
 
 # 三條線各自砍掉幾顆（相加會大於總移除，因為有細胞同時違反兩條）
 cat(sprintf("  percent.mt   >= %8.1f%%：%4d 顆\n", mt.hi, sum(gbm$percent.mt   >= mt.hi)),
@@ -137,7 +143,7 @@ pK.sel       <- bcmvn$pK.num[which.max(bcmvn$BCmetric)]
 p <- ggplot(bcmvn, aes(pK.num, BCmetric)) + geom_line() + geom_point(size = 1.5) +
      geom_vline(xintercept = pK.sel, colour = "#C0392B", linetype = 2) + theme_classic() +
      labs(x = "pK", y = "BCmetric", title = sprintf("DoubletFinder pK sweep (selected pK = %s)", pK.sel))
-ggsave("output/figs/01_doubletfinder_pK.png", p, width = 7, height = 4, dpi = 150, bg = "white")
+fig(p, "01_doubletfinder_pK", 7, 4)
 cat("選到的 pK =", pK.sel, "\n")
 # 「峰夠不夠尖」用看的不準，把前三名印出來，方法段才寫得出數字。
 top3 <- head(bcmvn[order(-bcmvn$BCmetric), c("pK.num", "BCmetric")], 3)

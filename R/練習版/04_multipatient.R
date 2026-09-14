@@ -5,7 +5,7 @@
 # 輸入：data/GSE84465_GBM_All_data.csv.gz（00_setup.R）；metadata 由 GEO series matrix 下載並自行解析
 # 輸出：output/rds/04_gbm4_unintegrated.rds、output/rds/04_gbm4_integrated.rds（含 integrated.cca 與 harmony 兩個 reduction）
 #       output/tables/04_patient_entropy_raw.csv、04_integration_controls.csv、04_lisi_by_celltype.csv
-#       output/figs/04_qc_by_patient.png、04_umap_unintegrated.png、04_umap_integration_compare.png、04_umap_integrated_celltype.png
+#       output/figs/04_*（png 與 pdf 各一份）
 # 時間：本課這份資料實跑約 2 分鐘（series matrix 由 00 先下載好；沒下載的話這裡會連網）
 # =====================================================================
 # ---------------------------------------------------------------------
@@ -15,6 +15,11 @@
 library(Seurat); library(dplyr); library(ggplot2); library(patchwork)
 set.seed(1234)
 for (d in c("output/figs", "output/rds", "output/tables")) dir.create(d, recursive = TRUE, showWarnings = FALSE)
+# 每張圖都存兩份：png 貼報告、pdf 是向量檔放大不糊。一律把「圖物件」傳進來，不要先印出來——
+# 直接印再 ggsave() 會在專案根目錄留下一個 Rplots.pdf（Rscript 的預設繪圖裝置就是 pdf）。
+fig <- function(p, name, w, h, dpi = 150) for (e in c("png", "pdf"))
+  ggsave(file.path("output/figs", paste0(name, ".", e)), p, width = w, height = h, dpi = dpi,
+         bg = "white", limitsize = FALSE)
 
 ## ---- 1. load ------------------------------------------------------- Q3 頁 8
 # 注意：這個 csv.gz 其實是「空白分隔」（GEO 常見），read.csv 會讀成 0 欄；用 read.table + sep = " "
@@ -89,7 +94,7 @@ table(gbm4$celltype_author)
 #   本課沿用作者標籤、不另做亞群，解析度就停在這一層。寫報告時，方法段要交代標籤是從哪裡來的、
 #   以及最細只分到哪一層——讀的人才知道你的結論適用到什麼程度。
 p <- VlnPlot(gbm4, c("nFeature_RNA", "nCount_RNA", "percent.mt"), group.by = "patient", pt.size = 0, ncol = 3)
-ggsave("output/figs/04_qc_by_patient.png", p, width = 13, height = 4, dpi = 150, bg = "white")
+fig(p, "04_qc_by_patient", 13, 4)
 # 作者已 QC；這裡若有極端離群（percent.mt > median + 3×MAD）可再濾，並記錄。
 
 ## ---- 3. baseline --------------------------------------------------- Q3 頁 11–12
@@ -102,7 +107,7 @@ gbm4 <- FindNeighbors(gbm4, dims = 1:____) |> FindClusters(resolution = ____, cl
 gbm4 <- RunUMAP(gbm4, dims = 1:____, reduction.name = "umap.raw")
 p <- DimPlot(gbm4, reduction = "umap.raw", group.by = "patient") +
      DimPlot(gbm4, reduction = "umap.raw", group.by = "celltype_author", label = TRUE, repel = TRUE)
-ggsave("output/figs/04_umap_unintegrated.png", p, width = 13, height = 5.5, dpi = 150, bg = "white")
+fig(p, "04_umap_unintegrated", 13, 5.5)
 # 看圖：Neoplastic 是否按病人分成不同群集？Immune / Oligodendrocyte 是否跨病人混合？
 saveRDS(gbm4, "output/rds/04_gbm4_unintegrated.rds")
 
@@ -142,10 +147,10 @@ for (red in c("integrated.cca", "harmony")) {
 p <- (DimPlot(gbm4, reduction = "umap.raw",     group.by = "patient") + ggtitle("Unintegrated")) +
      (DimPlot(gbm4, reduction = "umap.cca",     group.by = "patient") + ggtitle("Seurat CCA (default)")) +
      (DimPlot(gbm4, reduction = "umap.harmony", group.by = "patient") + ggtitle("Harmony"))
-ggsave("output/figs/04_umap_integration_compare.png", p, width = 18, height = 5.5, dpi = 150, bg = "white")
+fig(p, "04_umap_integration_compare", 18, 5.5)
 p <- DimPlot(gbm4, reduction = "umap.cca", group.by = "celltype_author", label = TRUE, repel = TRUE) +
      DimPlot(gbm4, reduction = "umap.harmony", group.by = "celltype_author", label = TRUE, repel = TRUE)
-ggsave("output/figs/04_umap_integrated_celltype.png", p, width = 13, height = 5.5, dpi = 150, bg = "white")
+fig(p, "04_umap_integrated_celltype", 13, 5.5)
 
 # 正負對照檢查（integration positive / negative controls）：
 #   正對照 = 免疫、寡樹突細胞：應跨病人混合（熵高）→ 整合成功

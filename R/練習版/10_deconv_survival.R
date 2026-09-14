@@ -3,7 +3,7 @@
 #
 # 對應影片：Q3 頁 79–82（§1 反卷積、§2 KM 與 Cox）
 # 輸入：output/rds/06_gbm4_final.rds；TCGA-GBM Bulk（TCGAbiolinks 自動下載，需連網）
-# 輸出：output/tables/10_deconv_tcga_gbm.csv、output/figs/10_km_*.pdf
+# 輸出：output/tables/10_deconv_tcga_gbm.csv、output/figs/10_km_*（png 與 pdf 各一份）
 # 時間：TCGA 下載約 10 分鐘，只有第一次要等——注意下載目錄在專案外（見 §1 的 GDC_DIR），
 #       所以就算換一個全新的專案資料夾，也是直接命中舊檔案。其餘約 3 分鐘。
 # ⚠ 這支唯一會「不是你的錯」卻跑不完的地方是 GDCprepare：它在下載之外還要再連一次 GDC API
@@ -20,6 +20,17 @@ library(Seurat); library(dplyr); library(ggplot2)
 set.seed(1234)
 gbm4 <- readRDS("output/rds/06_gbm4_final.rds")
 for (d in c("output/figs", "output/rds", "output/tables")) dir.create(d, recursive = TRUE, showWarnings = FALSE)
+# 每張圖都存兩份：png 貼報告、pdf 是向量檔放大不糊。一律把「圖物件」傳進來，不要先印出來——
+# 直接印再 ggsave() 會在專案根目錄留下一個 Rplots.pdf（Rscript 的預設繪圖裝置就是 pdf）。
+fig <- function(p, name, w, h, dpi = 150) for (e in c("png", "pdf"))
+  ggsave(file.path("output/figs", paste0(name, ".", e)), p, width = w, height = h, dpi = dpi,
+         bg = "white", limitsize = FALSE)
+# base 繪圖沒有可以傳遞的圖物件，只能把繪圖碼跑兩次；只適合單頁的圖（png 沒有多頁）。
+fig_base <- function(name, w, h, expr) {
+  e <- substitute(expr); env <- parent.frame()
+  pdf(file.path("output/figs", paste0(name, ".pdf")), w, h); eval(e, env); dev.off()
+  png(file.path("output/figs", paste0(name, ".png")), w * 150, h * 150, res = 150); eval(e, env); dev.off()
+}
 
 ## ---- 1. deconvolution ----------------------------------------------- Q3 頁 80–82
 library(MuSiC); library(TCGAbiolinks); library(SummarizedExperiment); library(survival); library(survminer)
@@ -216,7 +227,8 @@ cat("可分析人數", sum(!is.na(clin$time)), "／ 死亡事件", sum(clin$even
 clin$imm_hi  <- prop$Immune > median(prop$Immune)      # 二分：畫 KM 用
 clin$imm_pct <- prop$Immune * 100                      # 連續：Cox 用（不用先切成兩組）
 fit <- survfit(Surv(time, event) ~ imm_hi, data = clin)
-p <- ggsurvplot(fit, pval = TRUE, risk.table = TRUE, xlab = "Months"); pdf("output/figs/10_km_immune.pdf", 7, 6); print(p); dev.off()
+p <- ggsurvplot(fit, pval = TRUE, risk.table = TRUE, xlab = "Months")
+fig_base("10_km_immune", 7, 6, print(p))   # ggsurvplot 回傳的是 list（曲線 + risk table），不能直接丟給 ggsave
 print(survdiff(Surv(time, event) ~ imm_hi, data = clin))                    # log-rank 的 p 要印出來，不能只看圖上那個字
 # 年齡是這裡的陽性對照：GBM 的年齡效應是已知的，它若沒出來，代表臨床欄位或時間軸接錯了。
 # 中位數切兩半會丟掉組內的變異，只適合畫圖；Cox 以連續變項為主要分析，

@@ -3,7 +3,7 @@
 #
 # 對應影片：Q2 頁 25–36（§1 四行 + 週期、§2 PC1 與 nPC、§3 分群、掃描與穩定性檢查、§4 每群 QC、§4b doublet 群診斷）
 # 輸入：output/rds/01_gbm_qc.rds（01_qc.R）
-# 輸出：output/rds/02_gbm_clustered.rds、output/tables/02_per_cluster_qc.csv、output/figs/02_*.png
+# 輸出：output/rds/02_gbm_clustered.rds、output/tables/02_per_cluster_qc.csv、output/figs/02_*（png 與 pdf 各一份）
 # 時間：本課這份資料實跑約 1 分鐘
 # =====================================================================
 # ---------------------------------------------------------------------
@@ -14,6 +14,11 @@ library(Seurat); library(dplyr); library(ggplot2); library(patchwork)
 set.seed(1234)
 gbm <- readRDS("output/rds/01_gbm_qc.rds")
 for (d in c("output/figs", "output/rds", "output/tables")) dir.create(d, recursive = TRUE, showWarnings = FALSE)   # 圖檔資料夾先建好，後面 ggsave 才不會失敗
+# 每張圖都存兩份：png 貼報告、pdf 是向量檔放大不糊。一律把「圖物件」傳進來，不要先印出來——
+# 直接印再 ggsave() 會在專案根目錄留下一個 Rplots.pdf（Rscript 的預設繪圖裝置就是 pdf）。
+fig <- function(p, name, w, h, dpi = 150) for (e in c("png", "pdf"))
+  ggsave(file.path("output/figs", paste0(name, ".", e)), p, width = w, height = h, dpi = dpi,
+         bg = "white", limitsize = FALSE)
 
 ## ---- 1. preprocess ------------------------------------------------- Q2 頁 25–27
 gbm <- NormalizeData(gbm)                             # CP10K + log1p：除掉深度
@@ -28,7 +33,7 @@ head(VariableFeatures(gbm), 20)                       # 先看名單，解讀見
 lin <- c("PTPRC", "SOX2", "MBP", "PECAM1", "COL3A1")  # 免疫／膠質／寡樹突／血管／基質
 print(setNames(lin %in% VariableFeatures(gbm), lin))
 p <- LabelPoints(VariableFeaturePlot(gbm), points = head(VariableFeatures(gbm), 12), repel = TRUE)
-ggsave("output/figs/02_hvg.png", p, width = 8, height = 5, dpi = 150, bg = "white")
+fig(p, "02_hvg", 8, 5)
 
 # 週期分數：腫瘤裡增殖細胞多，先算好，分群後才能檢查它有沒有主導分群
 gbm <- CellCycleScoring(gbm, s.features   = cc.genes.updated.2019$s.genes,
@@ -49,7 +54,7 @@ if (abs(r1) > 0.5) warning("PC1 與深度高度相關：回去確認 NormalizeDa
 
 # 必要檢查二：取幾個 PC
 p <- ElbowPlot(gbm, ndims = 50)
-ggsave("output/figs/02_elbow.png", p, width = 7, height = 4, dpi = 150, bg = "white")
+fig(p, "02_elbow", 7, 4)
 # 「解釋了多少變異」要用特徵值，也就是標準差的平方。@stdev 是標準差，直接拿去除會算成
 # 「標準差佔比」，那不是變異解釋比例——網路上很多教學把這一步寫錯，這裡特意寫對。
 pct  <- gbm[["pca"]]@stdev^2 / sum(gbm[["pca"]]@stdev^2) * 100   # 各 PC 解釋的變異百分比
@@ -72,14 +77,14 @@ for (r in seq(0.2, 1.2, by = 0.2))
   gbm <- FindClusters(gbm, resolution = r, verbose = FALSE)
 library(clustree)
 p <- clustree(gbm, prefix = "RNA_snn_res.")
-ggsave("output/figs/02_clustree.png", p, width = 9, height = 8, dpi = 150, bg = "white")
+fig(p, "02_clustree", 9, 8)
 Idents(gbm) <- "RNA_snn_res.0.5"                      # 掃完一定指回定案欄位！
 # ⚠ 這裡先「不要」寫 gbm$seurat_clusters：下面 §3 的穩定性檢查還會再呼叫 FindClusters()，
 #   而 FindClusters() 不論有沒有給 cluster.name，都會順手覆寫 seurat_clusters 與 Idents。
 #   定案欄位統一等所有檢查跑完之後（本節結尾）才寫回去，否則 03 會拿到錯的分群。
 
 p <- DimPlot(gbm, label = TRUE) + DimPlot(gbm, group.by = "Phase")
-ggsave("output/figs/02_umap.png", p, width = 12, height = 5, dpi = 150, bg = "white")
+fig(p, "02_umap", 12, 5)
 
 # 穩定性三檢查（Q2 頁 35）：換 seed、換 k.param、看群大小
 ## TODO ▶ 分群的 resolution 從掃描與 clustree 挑哪一層？（Q2 頁 33–34）
@@ -118,7 +123,7 @@ write.csv(qc.tab, "output/tables/02_per_cluster_qc.csv", row.names = FALSE)
 ## （這裡在解答版有一段參考答案；先自己跑出數字，再回去對照）
 
 p <- VlnPlot(gbm, features = c("percent.mt", "nFeature_RNA", "dbl.score"), pt.size = 0, ncol = 3)
-ggsave("output/figs/02_per_cluster_qc.png", p, width = 13, height = 4, dpi = 150, bg = "white")
+fig(p, "02_per_cluster_qc", 13, 4)
 
 ## ---- 4b. doublet-cluster diagnostics -------------------------------- Q2 頁 36
 # dbl > 0.5 的群是「整群 doublet」的候選——但整群移除是不可逆的決定，不能只憑這個數字。
@@ -148,7 +153,7 @@ if (length(cand)) {
                 mean(d$PTPRC[i] > 0 & d$SOX2[i] > 0), base))
   }
   p <- VlnPlot(gbm, lin, group.by = "seurat_clusters", pt.size = 0, ncol = 5)
-  ggsave("output/figs/02_doublet_lineage_check.png", p, width = 16, height = 4, dpi = 150, bg = "white")
+  fig(p, "02_doublet_lineage_check", 16, 4)
 
   # ④ 候選群有沒有「專屬」marker，還是只是另外兩群 marker 的聯集
   for (cl in cand) {

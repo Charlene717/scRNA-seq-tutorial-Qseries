@@ -9,7 +9,7 @@
 #     三項都過也只代表「這個結果沒有明顯破綻」，統計單位仍然是細胞，該報的還是 06a 的 pseudobulk。
 # 輸入：output/rds/06_gbm4_final.rds（06a 跑過即有；此處以 OPC 為例——它在 06a 因兩部位都夠的病人只有
 #       1 位而被跳過，正是「不能 pseudobulk」的實例）
-# 輸出：output/tables/06b_de_<型別>_cell_level.csv、output/figs/06b_*.png
+# 輸出：output/tables/06b_de_<型別>_cell_level.csv、output/figs/06b_*（png 與 pdf 各一份）
 # 時間：本課這份資料實跑約 2 分鐘
 # =====================================================================
 # ---------------------------------------------------------------------
@@ -18,6 +18,11 @@
 # ---------------------------------------------------------------------
 library(Seurat); library(dplyr); library(ggplot2); library(patchwork)
 set.seed(1234)
+# 每張圖都存兩份：png 貼報告、pdf 是向量檔放大不糊。一律把「圖物件」傳進來，不要先印出來——
+# 直接印再 ggsave() 會在專案根目錄留下一個 Rplots.pdf（Rscript 的預設繪圖裝置就是 pdf）。
+fig <- function(p, name, w, h, dpi = 150) for (e in c("png", "pdf"))
+  ggsave(file.path("output/figs", paste0(name, ".", e)), p, width = w, height = h, dpi = dpi,
+         bg = "white", limitsize = FALSE)
 gbm4 <- readRDS("output/rds/06_gbm4_final.rds")
 gbm4[["RNA"]] <- JoinLayers(gbm4[["RNA"]])
 if (!"data" %in% Layers(gbm4[["RNA"]])) gbm4 <- NormalizeData(gbm4)
@@ -106,11 +111,35 @@ if (diff(range(perm.sig)) == 0)
   message("  ⚠ ", n.perm, " 次置換得到同一個數字——代表這個設計裡「病人」與「部位」幾乎重合，\n",
           "    病人內打散動不了什麼。這個置換檢定不能拿來當「訊號是真的」的證據；\n",
           "    它反而是在告訴你：這份資料分不開病人效應與部位效應。")
-p <- ggplot(data.frame(n = perm.sig), aes(n)) + geom_histogram(bins = 15, fill = "grey70") +
-     geom_vline(xintercept = sum(de$p_val_adj < 0.05, na.rm = TRUE), colour = "#D62728", linewidth = 1) +
-     theme_classic() + labs(x = "significant genes under permuted labels", y = "count",
-                            title = sprintf("%s: real (red) vs permuted", TYPE))
-ggsave("output/figs/06b_permutation.png", p, width = 6, height = 4, dpi = 150, bg = "white")
+# 畫這張圖要先分兩種情況。置換值全都一樣的時候，直方圖會變成「一根高柱 + 一大片空白 + 一條紅線」，
+# 看起來像壞掉，其實那就是結論：標籤打散之後只有一種有效排列，這個檢定在這份資料上做不出虛無分布。
+# 那種情況畫一條數線＋兩個點比直方圖誠實，也才看得懂。
+n.real <- sum(de$p_val_adj < 0.05, na.rm = TRUE)
+degenerate <- diff(range(perm.sig)) == 0
+if (degenerate) {
+  p <- ggplot(data.frame(x = c(perm.sig[1], n.real),
+                         k = factor(c("permuted", "real"), levels = c("permuted", "real"))),
+              aes(x, 0, colour = k)) +
+       geom_point(size = 5) +
+       geom_text(aes(label = sprintf("%s = %d", k, x)), vjust = -1.2, size = 3.5, show.legend = FALSE) +
+       scale_colour_manual(values = c(permuted = "grey50", real = "#D62728"), name = NULL) +
+       scale_y_continuous(limits = c(-0.3, 0.5), breaks = NULL, name = NULL) +
+       expand_limits(x = 0) + theme_classic() +
+       labs(x = "significant genes under permuted labels",
+            title = sprintf("%s: real vs permuted", TYPE),
+            subtitle = sprintf("%d 次置換全部得到同一個數字（%d）——病人與部位幾乎重合，打散動不了東西；\n這張圖不是「訊號很強」的證據，是「這份資料分不開兩個效應」",
+                               n.perm, perm.sig[1]))
+} else {
+  p <- ggplot(data.frame(n = perm.sig), aes(n)) +
+       geom_histogram(bins = min(15, length(unique(perm.sig))), fill = "grey70") +
+       geom_vline(xintercept = n.real, colour = "#D62728", linewidth = 1) +
+       expand_limits(x = 0) + theme_classic() +
+       labs(x = "significant genes under permuted labels", y = "count",
+            title = sprintf("%s: real (red) vs permuted", TYPE),
+            subtitle = sprintf("真實 %d｜置換 %d 次，中位數 %.0f，範圍 %d–%d",
+                               n.real, n.perm, median(perm.sig), min(perm.sig), max(perm.sig)))
+}
+fig(p, "06b_permutation", 7, 4.5)
 
 ## （這裡在解答版有一段參考答案；先自己跑出數字，再回去對照）
 

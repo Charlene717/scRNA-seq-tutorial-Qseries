@@ -3,7 +3,7 @@
 #
 # 對應影片：Q3 頁 72–75（§1 Slingshot + tradeSeq、§2 Monocle3 與手動選起點、§3 Monocle2 選配）
 # 輸入：output/rds/06_gbm4_final.rds
-# 輸出：output/figs/08_*.pdf、output/tables/08_traj_association.csv
+# 輸出：output/figs/08_*（png 與 pdf 各一份）、output/tables/08_traj_association.csv
 #       （有分支時另加 08_pseudotime_lineages.pdf、08_traj_association_bylineage.csv、08_traj_diffend.csv）
 # 時間：本課這份資料實跑 §1 + §3 共約 4 分鐘（每多一條 lineage，fitGAM 約等比例增加）；
 #       §2 的 Monocle3 為選配，未安裝時會跳過
@@ -23,6 +23,11 @@ library(Seurat); library(dplyr); library(ggplot2)
 set.seed(1234)
 gbm4 <- readRDS("output/rds/06_gbm4_final.rds")
 for (d in c("output/figs", "output/rds", "output/tables")) dir.create(d, recursive = TRUE, showWarnings = FALSE)
+# 每張圖都存兩份：png 貼報告、pdf 是向量檔放大不糊。一律把「圖物件」傳進來，不要先印出來——
+# 直接印再 ggsave() 會在專案根目錄留下一個 Rplots.pdf（Rscript 的預設繪圖裝置就是 pdf）。
+fig <- function(p, name, w, h, dpi = 150) for (e in c("png", "pdf"))
+  ggsave(file.path("output/figs", paste0(name, ".", e)), p, width = w, height = h, dpi = dpi,
+         bg = "white", limitsize = FALSE)
 
 ## ---- 1. trajectory -------------------------------------------------- Q3 頁 73–74
 library(slingshot); library(tradeSeq)
@@ -58,13 +63,14 @@ if (n.lin > 1)
 mal1$pt <- pt.all[, 1]                         # 顯示與早晚比較都用 lineage 1（其他分支專屬的細胞為 NA）
 p <- FeaturePlot(mal1, features = "pt") +
      ggtitle(sprintf("pseudotime | lineage 1 of %d | root = %s", n.lin, root))
-ggsave("output/figs/08_pseudotime.pdf", p, width = 5, height = 4, bg = "white")
+fig(p, "08_pseudotime", 5, 4)
 if (n.lin > 1) {                               # 有分支就每條都畫，才看得出它們分別走去哪
   pl <- lapply(seq_len(n.lin), function(i) {
     m <- mal1; m$pt_i <- pt.all[, i]
     FeaturePlot(m, features = "pt_i") + ggtitle(paste("lineage", i)) })
-  ggsave("output/figs/08_pseudotime_lineages.pdf", patchwork::wrap_plots(pl, ncol = 2),
-         width = 9, height = 4 * ceiling(n.lin / 2), bg = "white")
+  nc <- min(2, n.lin)                          # 欄數跟著實際條數走，只有一條時不要留半張空白
+  fig(patchwork::wrap_plots(pl, ncol = nc), "08_pseudotime_lineages",
+      4.5 * nc, 4 * ceiling(n.lin / nc))
 }
 # 檢查：週期有沒有主導軌跡？（gbm4 這條多病人流程沒跑過 CellCycleScoring，先在這個子集算）
 mal1 <- CellCycleScoring(mal1, s.features = cc.genes.updated.2019$s.genes,
@@ -103,9 +109,9 @@ if (n.lin > 1) {   # 整體檢定只說「這個基因在某處有變化」，�
 # 基因裡，硬畫只會讓四格裡有三格是 fallback 補進來的，跟你講的故事對不上。
 show.genes <- head(rownames(assoc), 4)
 cat("smoothers 畫這些基因：", paste(show.genes, collapse = ", "), "\n")
-pdf("output/figs/08_smoothers.pdf", 8, 6)
-for (g in show.genes) print(plotSmoothers(gam, cnt.fit, gene = g) + ggtitle(g))   # 有分支時每條各畫一條
-dev.off()
+# 四個基因拼成一張，不要一個基因一頁：png 沒有多頁的概念，分頁存會只剩最後一張。
+fig(patchwork::wrap_plots(lapply(show.genes, function(g) plotSmoothers(gam, cnt.fit, gene = g) + ggtitle(g)),
+                          ncol = 2), "08_smoothers", 10, 7)                        # 有分支時每條各畫一條
 
 ## ---- 1c. 分支之間到底有沒有差？（只有多條 lineage 時才跑）------------ Q3 頁 74
 # 有分支的時候，最值得問的不是「誰沿著軌跡在變」，而是「兩條路走到的地方一不一樣」。
@@ -206,7 +212,7 @@ if (requireNamespace("monocle3", quietly = TRUE) && requireNamespace("SeuratWrap
   mal1$pt_m3[!is.finite(mal1$pt_m3)] <- NA                   # 圖上到不了的細胞是 Inf → 改 NA
   p <- plot_cells(cds, color_cells_by = "pseudotime", label_branch_points = TRUE,
                   label_leaves = FALSE, label_roots = TRUE) + ggtitle("Monocle3 pseudotime")
-  ggsave("output/figs/08_monocle3_pseudotime.pdf", p, width = 5.5, height = 4.5, bg = "white")
+  fig(p, "08_monocle3_pseudotime", 5.5, 4.5)
   # 跨工具檢查：兩套 pseudotime 的 Spearman 相關（判讀標準見 §3 結尾的分級）
   # 注意比的是 Slingshot 的 lineage 1；Monocle3 若也分支，這個單一數字只涵蓋主幹那一段。
   cat("Slingshot vs Monocle3 pseudotime Spearman r =",
@@ -251,14 +257,14 @@ if (requireNamespace("monocle", quietly = TRUE)) {
   cds2 <- orderCells(cds2)                                   # 第一次先不指定，讓它自己排
   # 「自己選起點」：先看這張圖，決定哪個 State 是起點——
   p <- plot_cell_trajectory(cds2, color_by = "State") + ggtitle("Monocle2: pick your root State")
-  ggsave("output/figs/08_monocle2_states.pdf", p, width = 5.5, height = 4.5, bg = "white")
+  fig(p, "08_monocle2_states", 5.5, 4.5)
   # 手動版：看圖後把數字填進去，例如 cds2 <- orderCells(cds2, root_state = 3)
   # 腳本版（可重現）：選 OPC 樣分數最高的 State
   st.score <- tapply(mal1$OPC1[colnames(cds2)], pData(cds2)$State, mean)
   cds2 <- orderCells(cds2, root_state = as.integer(names(which.max(st.score))))
   mal1$pt_m2 <- pData(cds2)$Pseudotime[match(colnames(mal1), colnames(cds2))]
   p <- plot_cell_trajectory(cds2, color_by = "Pseudotime") + ggtitle("Monocle2 pseudotime (DDRTree)")
-  ggsave("output/figs/08_monocle2_pseudotime.pdf", p, width = 5.5, height = 4.5, bg = "white")
+  fig(p, "08_monocle2_pseudotime", 5.5, 4.5)
   cat("Slingshot vs Monocle2 pseudotime Spearman r =",
       round(cor(mal1$pt, mal1$pt_m2, method = "spearman", use = "complete.obs"), 3), "\n")
 } else {

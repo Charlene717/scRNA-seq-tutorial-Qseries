@@ -3,7 +3,7 @@
 #
 # 對應影片：Q3 頁 76–78（§1 PROGENy 路徑活性與條件比較、§2 SCENIC regulon）
 # 輸入：output/rds/06_gbm4_final.rds
-# 輸出：output/figs/09_*.pdf、output/tables/09_progeny_*.csv
+# 輸出：output/figs/09_*（png 與 pdf 各一份）、output/tables/09_progeny_*.csv
 # 時間：本課這份資料實跑約 0.6 分鐘；SCENIC（pySCENIC，Python）數小時，為選配
 # PROGENy 問「哪條訊號路徑活著」（footprint 基因）；SCENIC 問「哪個轉錄因子在驅動」（regulon）。
 # =====================================================================
@@ -20,6 +20,17 @@ gbm4 <- readRDS("output/rds/06_gbm4_final.rds")
 gbm4[["RNA"]] <- JoinLayers(gbm4[["RNA"]])
 if (!"data" %in% Layers(gbm4[["RNA"]])) gbm4 <- NormalizeData(gbm4)
 for (d in c("output/figs", "output/rds", "output/tables")) dir.create(d, recursive = TRUE, showWarnings = FALSE)
+# 每張圖都存兩份：png 貼報告、pdf 是向量檔放大不糊。一律把「圖物件」傳進來，不要先印出來——
+# 直接印再 ggsave() 會在專案根目錄留下一個 Rplots.pdf（Rscript 的預設繪圖裝置就是 pdf）。
+fig <- function(p, name, w, h, dpi = 150) for (e in c("png", "pdf"))
+  ggsave(file.path("output/figs", paste0(name, ".", e)), p, width = w, height = h, dpi = dpi,
+         bg = "white", limitsize = FALSE)
+# base 繪圖沒有可以傳遞的圖物件，只能把繪圖碼跑兩次；只適合單頁的圖（png 沒有多頁）。
+fig_base <- function(name, w, h, expr) {
+  e <- substitute(expr); env <- parent.frame()
+  pdf(file.path("output/figs", paste0(name, ".pdf")), w, h); eval(e, env); dev.off()
+  png(file.path("output/figs", paste0(name, ".png")), w * 150, h * 150, res = 150); eval(e, env); dev.off()
+}
 
 ## ---- 1. pathway-activity（decoupleR / PROGENy）---------------------- Q3 頁 77–78
 library(decoupleR)
@@ -37,7 +48,7 @@ act.w <- act |> tidyr::pivot_wider(id_cols = source, names_from = condition, val
 # 任何「以為拿到的是 counts」的後續函式都可能默默算錯。
 gbm4[["progeny"]] <- CreateAssayObject(data = act.w[, colnames(gbm4)])
 DefaultAssay(gbm4) <- "progeny"
-FeaturePlot(gbm4, features = c("Hypoxia", "JAK-STAT", "EGFR", "TGFb"), ncol = 4); ggsave("output/figs/09_progeny_umap.pdf", width = 16, height = 4, bg = "white")
+fig(FeaturePlot(gbm4, features = c("Hypoxia", "JAK-STAT", "EGFR", "TGFb"), ncol = 4), "09_progeny_umap", 16, 4)
 # 條件比較：惡性細胞的路徑活性 → 病人 × 部位 平均 → 配對檢定（單位 = 病人）
 # 「n 先於 p」在這裡要問兩次：幾位病人配得成對，以及每一格是幾顆細胞平均出來的。
 # 這份資料的邊緣樣本幾乎都是正常腦組織，惡性細胞很少——只看平均值看不出這件事，
@@ -78,8 +89,7 @@ if (sum(ok) >= 3) {
     legend("topright", legend = sprintf("%s (peri n=%d)", pa$patient[paired], pa$n_Periphery[paired]),
            col = seq_len(sum(paired)), lty = 1, pch = 16, bty = "n", cex = 0.8)
   }
-  draw_pairs()
-  pdf("output/figs/09_progeny_hypoxia_paired.pdf", 5, 4); draw_pairs(); dev.off()
+  fig_base("09_progeny_hypoxia_paired", 5, 4, draw_pairs())
 }
 # 本例的邊緣側惡性細胞數：BT_S1 = 1、BT_S2 = 13、BT_S4 = 17、BT_S6 = 0。
 # 三個配得成對的病人，邊緣那一格全都不到 20 顆；BT_S1 那個 3.80 是「一顆細胞」的值。
@@ -105,8 +115,9 @@ DefaultAssay(gbm4) <- "RNA"
 if (file.exists("output/tables/09_scenic_auc.csv")) {                      # regulon × cell（自 auc.loom 匯出）
   auc <- read.csv("output/tables/09_scenic_auc.csv", row.names = 1, check.names = FALSE)
   gbm4[["scenic"]] <- CreateAssayObject(data = as.matrix(auc)[, colnames(gbm4)])   # AUC 也是分數，同上
-  DoHeatmap(subset(gbm4, downsample = 100), features = c("SOX2(+)", "OLIG2(+)", "SOX10(+)", "SPI1(+)", "CEBPB(+)", "TCF7(+)", "ERG(+)"),
-            assay = "scenic", group.by = "type")
+  fig(DoHeatmap(subset(gbm4, downsample = 100),
+                features = c("SOX2(+)", "OLIG2(+)", "SOX10(+)", "SPI1(+)", "CEBPB(+)", "TCF7(+)", "ERG(+)"),
+                assay = "scenic", group.by = "type"), "09_scenic_heatmap", 9, 5)
   DefaultAssay(gbm4) <- "RNA"
 }
 

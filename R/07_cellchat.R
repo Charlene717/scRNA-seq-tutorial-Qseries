@@ -3,7 +3,7 @@
 #
 # 對應影片：Q3 頁 58–70（§1 跑一次 CellChat、§2 路徑層級與六種圖、§3 兩條件比較、§4 LIANA）
 # 輸入：output/rds/06_gbm4_final.rds（06a_pseudobulk_gsea.R；含 malignant 標籤與 type 欄）
-# 輸出：output/rds/07_cellchat/<patient>_<tissue>_min<MIN.CELLS>.rds、output/tables/07_liana_top500.csv、output/figs/07_*.pdf
+# 輸出：output/rds/07_cellchat/<patient>_<tissue>_min<MIN.CELLS>.rds、output/tables/07_liana_top500.csv、output/figs/07_*（png 與 pdf 各一份）
 # 時間：本課這份資料實跑，八個樣本（其中一個群數不足被跳過）連同六種圖與 LIANA 全跑完約 4 分鐘——
 #       這份資料每個樣本只有 52–800 顆細胞，而且只用 Secreted Signaling 這個子集。
 #       換成 10x 的大樣本會慢很多（單一樣本數萬顆、群又多時，一個樣本就可能要十幾分鐘），
@@ -27,6 +27,17 @@ gbm4[["RNA"]] <- JoinLayers(gbm4[["RNA"]])                # 04 之後 RNA 是按
 if (!"data" %in% Layers(gbm4[["RNA"]])) gbm4 <- NormalizeData(gbm4)   # 否則 plotGeneExpression/VlnPlot 會拿 counts 畫
 dir.create("output/rds/07_cellchat", showWarnings = FALSE, recursive = TRUE)   # 每個樣本一個 CellChat 物件，歸在 rds/ 底下
 for (d in c("output/figs", "output/rds", "output/tables")) dir.create(d, recursive = TRUE, showWarnings = FALSE)
+# 每張圖都存兩份：png 貼報告、pdf 是向量檔放大不糊。一律把「圖物件」傳進來，不要先印出來——
+# 直接印再 ggsave() 會在專案根目錄留下一個 Rplots.pdf（Rscript 的預設繪圖裝置就是 pdf）。
+fig <- function(p, name, w, h, dpi = 150) for (e in c("png", "pdf"))
+  ggsave(file.path("output/figs", paste0(name, ".", e)), p, width = w, height = h, dpi = dpi,
+         bg = "white", limitsize = FALSE)
+# CellChat 有不少是 base 繪圖或 ComplexHeatmap，沒有可以傳遞的圖物件，只能把繪圖碼跑兩次。
+fig_base <- function(name, w, h, expr) {
+  e <- substitute(expr); env <- parent.frame()
+  pdf(file.path("output/figs", paste0(name, ".pdf")), w, h); eval(e, env); dev.off()
+  png(file.path("output/figs", paste0(name, ".png")), w * 150, h * 150, res = 150); eval(e, env); dev.off()
+}
 
 # 通訊分析用的標籤：沿用 06a 存進 rds 的 type（CNV 判定的惡性 + 作者的正常型別），unresolved 排除。
 # ⚠ 圖上的群名是 Immune cell，不是 TAM。作者標籤只分到這一層（見 04 §2 那張表），
@@ -104,46 +115,49 @@ cat("\n六種圖的示範樣本：", DEMO, "\n")
 
 ## ---- 2. six-plots --------------------------------------------------- Q3 頁 62–68
 groupSize <- as.numeric(table(cc@idents))
-pdf("output/figs/07_1_circle.pdf", width = 10, height = 5); par(mfrow = c(1, 2), xpd = TRUE)
-netVisual_circle(cc@net$count,  vertex.weight = groupSize, weight.scale = TRUE, label.edge = FALSE, title.name = "Number of interactions")
-netVisual_circle(cc@net$weight, vertex.weight = groupSize, weight.scale = TRUE, label.edge = FALSE, title.name = "Interaction weights")
-dev.off()
+fig_base("07_1_circle", 10, 5, {
+  par(mfrow = c(1, 2), xpd = TRUE)
+  netVisual_circle(cc@net$count,  vertex.weight = groupSize, weight.scale = TRUE, label.edge = FALSE, title.name = "Number of interactions")
+  netVisual_circle(cc@net$weight, vertex.weight = groupSize, weight.scale = TRUE, label.edge = FALSE, title.name = "Interaction weights")
+})
 # 圖 2：熱圖（誰送給誰）
-p2 <- netVisual_heatmap(cc, measure = "weight", color.heatmap = "Reds"); pdf("output/figs/07_2_heatmap.pdf", 6, 5); print(p2); dev.off()
+p2 <- netVisual_heatmap(cc, measure = "weight", color.heatmap = "Reds")
+fig_base("07_2_heatmap", 6, 5, print(p2))
 # 圖 4：signaling role（先做，找主角）
 cc@netP$pathways
 p4a <- netAnalysis_signalingRole_heatmap(cc, pattern = "outgoing", height = 8)
 p4b <- netAnalysis_signalingRole_heatmap(cc, pattern = "incoming", height = 8)
-pdf("output/figs/07_4_roles.pdf", 12, 7); print(p4a + p4b); dev.off()
-netAnalysis_signalingRole_scatter(cc); ggsave("output/figs/07_4_scatter.pdf", width = 5, height = 4, bg = "white")
+fig_base("07_4_roles", 12, 7, print(p4a + p4b))
+fig(netAnalysis_signalingRole_scatter(cc), "07_4_scatter", 5, 4)
 # 圖 3：挑一條路徑拆開（以 SPP1 為例；名稱一定要在 cc@netP$pathways 裡，否則整段會報錯）
 pw <- if ("SPP1" %in% cc@netP$pathways) "SPP1" else cc@netP$pathways[1]
 if (pw != "SPP1") cat("這個樣本推不出 SPP1，改用", pw, "示範\n")
-pdf("output/figs/07_3_pathway.pdf", 10, 5); par(mfrow = c(1, 2))
-netVisual_aggregate(cc, signaling = pw, layout = "circle")
-netVisual_aggregate(cc, signaling = pw, layout = "chord")
-dev.off()
-netAnalysis_contribution(cc, signaling = pw); ggsave("output/figs/07_3_contribution.pdf", width = 5, height = 3, bg = "white")
-netVisual_heatmap(cc, signaling = pw, color.heatmap = "Reds")
-plotGeneExpression(cc, signaling = pw); ggsave("output/figs/07_3_genes.pdf", width = 8, height = 5, bg = "white")   # 驗證表現
-netAnalysis_signalingRole_network(cc, signaling = pw, width = 8, height = 2.5)
+fig_base("07_3_pathway", 10, 5, {
+  par(mfrow = c(1, 2))
+  netVisual_aggregate(cc, signaling = pw, layout = "circle")
+  netVisual_aggregate(cc, signaling = pw, layout = "chord")
+})
+fig(netAnalysis_contribution(cc, signaling = pw), "07_3_contribution", 5, 3)
+fig_base("07_3_heatmap", 6, 5, print(netVisual_heatmap(cc, signaling = pw, color.heatmap = "Reds")))
+fig(plotGeneExpression(cc, signaling = pw), "07_3_genes", 8, 5)                     # 驗證表現
+fig_base("07_3_role_network", 8, 2.5, netAnalysis_signalingRole_network(cc, signaling = pw, width = 8, height = 2.5))
 # 圖 5：bubble（寫進論文的那張）
 # 群名一律先跟 cc_groups() 取交集：寫了一個這個樣本裡沒有（或細胞數不足被移除）的群，整行就報錯
 g5.src <- intersect(c("Immune cell", "Malignant"), cc_groups(cc))
 g5.tgt <- intersect(c("Malignant", "Immune cell", "Vascular"), cc_groups(cc))
 if (length(g5.src) && length(g5.tgt)) {
-  netVisual_bubble(cc, sources.use = g5.src, targets.use = g5.tgt, remove.isolate = TRUE)
-  ggsave("output/figs/07_5_bubble.pdf", width = 7, height = 8, bg = "white")
+  fig(netVisual_bubble(cc, sources.use = g5.src, targets.use = g5.tgt, remove.isolate = TRUE),
+      "07_5_bubble", 7, 8)
 } else cat("這個樣本裡", DEMO, "沒有足夠的 Immune cell 或 Malignant，跳過圖 5\n")
 # 只看幾條路徑：名稱一定要在 cc@netP$pathways 裡（每個樣本推得出的路徑不同，硬寫 MIF 這種名稱會報錯）
 sig3 <- head(intersect(c("SPP1", "MIF", "VEGF", "PTN", "TGFb"), cc@netP$pathways), 3)
 if (length(sig3) == 0) sig3 <- head(cc@netP$pathways, 3)
-netVisual_bubble(cc, signaling = sig3, remove.isolate = TRUE)
-ggsave("output/figs/07_5_bubble_paths.pdf", width = 7, height = 6, bg = "white")
+fig(netVisual_bubble(cc, signaling = sig3, remove.isolate = TRUE), "07_5_bubble_paths", 7, 6)
 # 回 Seurat 驗證具體的一對：CellChat 的機率是推出來的，配體與受體到底表現在誰身上要自己看
 feats <- intersect(c("SPP1", "CD44"), rownames(gbm4))
-if (length(feats)) VlnPlot(subset(gbm4, patient == DEMO.p & tissue == DEMO.t),
-                           features = feats, group.by = "type", pt.size = 0)
+if (length(feats))                                   # 這張也要存檔：只畫在螢幕上的圖，批次執行時會落進 Rplots.pdf
+  fig(VlnPlot(subset(gbm4, patient == DEMO.p & tissue == DEMO.t),
+              features = feats, group.by = "type", pt.size = 0), "07_5_vln_ligand_receptor", 8, 4)
 
 ## ---- 3. compare-conditions ------------------------------------------ Q3 頁 67、69
 PAIR <- "BT_S2"                                                             # 同一位病人的核心 vs 邊緣
@@ -156,12 +170,13 @@ cc.list <- list(Core = cc.all[[need[1]]], Periphery = cc.all[[need[2]]])
 cc.m <- mergeCellChat(cc.list, add.names = names(cc.list))
 g1 <- compareInteractions(cc.m, show.legend = FALSE, group = c(1, 2))
 g2 <- compareInteractions(cc.m, show.legend = FALSE, group = c(1, 2), measure = "weight")
-g1 + g2; ggsave("output/figs/07_6_compare.pdf", width = 6, height = 3, bg = "white")
-pdf("output/figs/07_6_diff.pdf", 10, 5); par(mfrow = c(1, 2), xpd = TRUE)
-netVisual_diffInteraction(cc.m, weight.scale = TRUE)                       # 紅：Periphery > Core；藍：反之
-netVisual_diffInteraction(cc.m, weight.scale = TRUE, measure = "weight")
-dev.off()
-rankNet(cc.m, mode = "comparison", stacked = TRUE, do.stat = TRUE); ggsave("output/figs/07_6_rankNet.pdf", width = 5, height = 6, bg = "white")
+fig(g1 + g2, "07_6_compare", 6, 3)
+fig_base("07_6_diff", 10, 5, {
+  par(mfrow = c(1, 2), xpd = TRUE)
+  netVisual_diffInteraction(cc.m, weight.scale = TRUE)                     # 紅：Periphery > Core；藍：反之
+  netVisual_diffInteraction(cc.m, weight.scale = TRUE, measure = "weight")
+})
+fig(rankNet(cc.m, mode = "comparison", stacked = TRUE, do.stat = TRUE), "07_6_rankNet", 5, 6)
 # 兩條件並排的 bubble 有兩道門檻，順序不能顛倒：
 #   ① 來源與目標兩群都要在兩個條件裡「活著」（細胞數 ≥ MIN.CELLS，否則整組被移除）
 #   ② 兩邊都要推得出顯著互動（只有一邊有的時候，CellChat 會丟 seq 的 'by' 錯誤，是已知 bug）
@@ -176,7 +191,7 @@ cat(sprintf("\n%s → %s：%s\n", SRC, TGT,
 
 # 一組「來源 → 目標」的兩條件 bubble：先試合併物件；②那個 bug 一觸發就退回兩張單樣本並排；
 # 兩種都畫不出來，才把原因說清楚。共同細胞群那一組用的是同一個函式。
-bubble_pair <- function(src, tgt, file, ttl) {
+bubble_pair <- function(src, tgt, name, ttl) {
   ok <- vapply(cc.list, function(x) all(c(src, tgt) %in% cc_groups(x)), logical(1))
   one <- function(x, k)
     tryCatch(netVisual_bubble(x, sources.use = src, targets.use = tgt, remove.isolate = TRUE) + ggtitle(k),
@@ -203,16 +218,16 @@ bubble_pair <- function(src, tgt, file, ttl) {
         "  下一步只有兩條路：降低 MIN.CELLS（代價是機率估計不穩），或換一組兩邊都夠大的來源→目標。\n", sep = "")
     return(invisible(FALSE))
   }
-  print(p); ggsave(file, p, width = 9, height = 6, bg = "white"); invisible(TRUE)
+  fig(p, name, 9, 6); invisible(TRUE)
 }
-bubble_pair(SRC, TGT, "output/figs/07_6_bubble_compare.pdf", paste(SRC, "→", TGT))
+bubble_pair(SRC, TGT, "07_6_bubble_compare", paste(SRC, "→", TGT))
 
 # 換一組兩個條件都活著的細胞群——這不是補救，是把「這份資料到底能比什麼」講清楚。
 # 只剩一群時畫的是自分泌（autocrine）：這份資料真正撐得起核心 vs 邊緣對比的，就只有 Immune cell 對自己。
 both <- Reduce(intersect, lapply(cc.list, cc_groups))
 cat("兩個條件都存活的細胞群：", paste(both, collapse = "、"), "\n")
 if (length(both) >= 1)
-  bubble_pair(both, both, "output/figs/07_6_bubble_shared.pdf", "兩條件共同的細胞群")
+  bubble_pair(both, both, "07_6_bubble_shared", "兩條件共同的細胞群")
 ## >>> 參考答案 ------------------------------------------------------
 # 本課這份資料的結果（seed 1234，MIN.CELLS = 20）：
 #   8 個樣本裡 7 個湊得出兩群以上、跑完 CellChat；只有 BT_S6_Periphery 被擋下（只有 1 群過門檻）。
@@ -251,7 +266,7 @@ if (requireNamespace("liana", quietly = TRUE)) {
   li.tgt <- intersect(c("Malignant", "Vascular"), li.grp)
   if ("Immune cell" %in% li.grp && length(li.tgt)) {
     p <- li.agg |> liana_dotplot(source_groups = "Immune cell", target_groups = li.tgt, ntop = 15)
-    print(p); ggsave("output/figs/07_liana_dotplot.pdf", p, width = 10, height = 6, bg = "white")
+    fig(p, "07_liana_dotplot", 10, 6)
   } else cat("這個樣本裡 Immune cell 或目標群被 LIANA 的 5 顆門檻擋掉了，跳過 dotplot\n")
   write.csv(li.agg |> dplyr::select(-starts_with("natmi"), -starts_with("connectome")) |> head(500),
             "output/tables/07_liana_top500.csv", row.names = FALSE)

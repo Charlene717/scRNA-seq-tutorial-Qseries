@@ -3,12 +3,24 @@
 #
 # 對應影片：Q2 頁 38–64（§1 譜系標誌與 marker 面板、§2 FindAllMarkers 與篩選、§3 SingleR、§4 命名、§4b 免疫亞群、§5 Neftel 分數與三種算法、§5b 品質檢查、§6 交付與存檔）
 # 輸入：output/rds/02_gbm_clustered.rds（02_cluster.R）
-# 輸出：output/rds/03_gbm_annotated.rds、output/tables/03_markers.csv（另有 03_immune_markers、03_composition）
+# 輸出：output/rds/03_gbm_annotated.rds、output/tables/03_markers.csv（另有 03_immune_markers、03_composition）、
+#       output/figs/03_*（png 與 pdf 各一份）
 # 時間：本課這份資料實跑約 2 分鐘（SingleR 首次下載參考集約 1 GB 另計，之後有快取）
 # =====================================================================
 library(Seurat); library(dplyr); library(ggplot2); library(patchwork)
 set.seed(1234)
 for (d in c("output/figs", "output/rds", "output/tables")) dir.create(d, recursive = TRUE, showWarnings = FALSE)   # 圖檔資料夾先建好，後面 ggsave 才不會失敗
+# 每張圖都存兩份：png 貼報告、pdf 是向量檔放大不糊。一律把「圖物件」傳進來，不要先印出來——
+# 直接印再 ggsave() 會在專案根目錄留下一個 Rplots.pdf（Rscript 的預設繪圖裝置就是 pdf）。
+fig <- function(p, name, w, h, dpi = 150) for (e in c("png", "pdf"))
+  ggsave(file.path("output/figs", paste0(name, ".", e)), p, width = w, height = h, dpi = dpi,
+         bg = "white", limitsize = FALSE)
+# base 繪圖（不是 ggplot）沒有可以傳遞的圖物件，只能把繪圖碼原封不動跑兩次，各存一種格式。
+fig_base <- function(name, w, h, expr) {
+  e <- substitute(expr); env <- parent.frame()
+  pdf(file.path("output/figs", paste0(name, ".pdf")), w, h); eval(e, env); dev.off()
+  png(file.path("output/figs", paste0(name, ".png")), w * 150, h * 150, res = 150); eval(e, env); dev.off()
+}
 gbm <- readRDS("output/rds/02_gbm_clustered.rds")
 Idents(gbm) <- "seurat_clusters"
 
@@ -27,7 +39,7 @@ gates <- c("PTPRC",   # 免疫
            "PECAM1")  # 血管內皮
 gates <- intersect(gates, rownames(gbm))              # 資料裡沒有的基因先剔除，畫圖才不會報錯
 p <- FeaturePlot(gbm, features = gates, ncol = 4, order = TRUE)
-ggsave("output/figs/03_gates.png", p, width = 16, height = 4, dpi = 150, bg = "white")
+fig(p, "03_gates", 16, 4)
 
 # GBM 微環境 marker 面板
 panel <- list(
@@ -43,7 +55,7 @@ panel <- list(
 panel <- lapply(panel, intersect, rownames(gbm)); panel <- panel[lengths(panel) > 0]   # 同上
 p <- DotPlot(gbm, features = panel, cluster.idents = TRUE) + RotatedAxis() +
      theme(axis.text.x = element_text(size = 8))
-ggsave("output/figs/03_dotplot_panel.png", p, width = 16, height = 6, dpi = 150, bg = "white")
+fig(p, "03_dotplot_panel", 16, 6)
 # 看圖：沿對角線一塊塊亮起來嗎？PTPRC 亮在幾群（那是免疫類群）？MKI67 疊在哪幾群上？
 
 ## ---- 2. markers ---------------------------------------------------- Q2 頁 46–47
@@ -129,7 +141,7 @@ gbm$doublet_status[as.character(gbm$seurat_clusters) %in% conf.dbl] <- "Confirme
 if (any(gbm$celltype == "DOUBLET")) gbm <- subset(gbm, subset = celltype != "DOUBLET")
 gbm$celltype <- droplevels(gbm$celltype); Idents(gbm) <- "celltype"   # 清掉空的 level，圖例才不會多出空類別
 p <- DimPlot(gbm, label = TRUE, repel = TRUE) + NoLegend()
-ggsave("output/figs/03_umap_annotated.png", p, width = 7, height = 6, dpi = 150, bg = "white")
+fig(p, "03_umap_annotated", 7, 6)
 table(gbm$celltype)
 
 ## ---- 4b. immune-subsets --------------------------------------------- Q2 頁 53–55
@@ -140,7 +152,7 @@ imm <- NormalizeData(imm) |> FindVariableFeatures(nfeatures = 2000) |> ScaleData
 #   PC5 的一端是 FABP7 / PTPRZ1 / GFAP / BCAN（膠質）。免疫子集裡出現這些基因有兩種可能：
 #   環境 RNA（Q2 講的 SoupX），或 TAM 真的吞了髓鞘與腫瘤碎片（myelin-laden macrophage，文獻有記載）。
 #   分辨方法：SoupX 校正後再看一次——訊號整片消失是環境 RNA，只集中在特定亞群才是生物學。
-ggsave("output/figs/03_imm_elbow.png", ElbowPlot(imm), width = 6, height = 4, dpi = 150, bg = "white")
+fig(ElbowPlot(imm), "03_imm_elbow", 6, 4)
 imm <- FindNeighbors(imm, dims = 1:20) |> FindClusters(resolution = 0.6) |> RunUMAP(dims = 1:20)
 imm.panel <- c("P2RY12", "TMEM119", "CX3CR1",                       # 小膠質
                "CD163", "LYZ", "TGFBI", "S100A8", "VCAN",           # 血液來源 TAM / 單核球
@@ -148,7 +160,7 @@ imm.panel <- c("P2RY12", "TMEM119", "CX3CR1",                       # 小膠質
                "PDCD1", "HAVCR2", "NKG7", "GNLY", "CD1C", "MKI67")
 imm.panel <- intersect(imm.panel, rownames(imm))
 p <- DotPlot(imm, features = imm.panel) + RotatedAxis()
-ggsave("output/figs/03_imm_dotplot.png", p, width = 11, height = 5, dpi = 150, bg = "white")
+fig(p, "03_imm_dotplot", 11, 5)
 imm.markers <- FindAllMarkers(imm, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.5)
 write.csv(imm.markers, "output/tables/03_immune_markers.csv", row.names = FALSE)
 # 對照 DotPlot 標上第二層名稱（編號依你的資料）：
@@ -200,7 +212,7 @@ glial$state  <- apply(glial@meta.data[, c("MES", "AC", "OPC", "NPC")], 1, functi
 p <- ggplot(glial@meta.data, aes(axis_x, axis_y, colour = state)) + geom_point(size = .6, alpha = .6) +
      geom_hline(yintercept = 0) + geom_vline(xintercept = 0) + theme_classic() +
      labs(x = "← OPC/NPC-like   AC/MES-like →", y = "state strength")
-ggsave("output/figs/03_neftel_states.png", p, width = 7, height = 6, dpi = 150, bg = "white")
+fig(p, "03_neftel_states", 7, 6)
 table(glial$state, glial$Phase)                       # 週期一起看：增殖細胞落在哪個狀態？
 ## >>> 參考答案 ------------------------------------------------------
 # 本課的結果（2,379 顆膠質細胞，實跑驗證）：
@@ -224,9 +236,9 @@ round(prop.table(table(gbm$celltype, gbm$singler), 1), 2)          # 交叉表�
 top5 <- markers |> group_by(cluster) |> slice_max(avg_log2FC, n = 5)
 gbm <- ScaleData(gbm, features = unique(c(VariableFeatures(gbm), top5$gene)))   # 熱圖用的基因要先 scale 過
 p <- DoHeatmap(subset(gbm, downsample = 100), features = unique(top5$gene), group.by = "celltype")
-ggsave("output/figs/03_heatmap_top5.png", p, width = 12, height = 10, dpi = 150, bg = "white")
-gbm <- BuildClusterTree(gbm, dims = 1:20)                           # 分群樹（base 繪圖，用 png() 存）
-png("output/figs/03_cluster_tree.png", width = 1200, height = 900, res = 150); PlotClusterTree(gbm); dev.off()
+fig(p, "03_heatmap_top5", 12, 10)
+gbm <- BuildClusterTree(gbm, dims = 1:20)                           # 分群樹（base 繪圖，用 fig_base() 存）
+fig_base("03_cluster_tree", 8, 6, PlotClusterTree(gbm))
 
 # 輪廓係數：dist() 是 O(n²)，細胞多要先抽樣，否則記憶體會爆
 set.seed(1234)
@@ -240,7 +252,7 @@ library(patchwork)
 p1 <- DimPlot(gbm, group.by = "celltype", label = TRUE, repel = TRUE) + NoLegend()
 p2 <- DotPlot(gbm, features = panel, group.by = "celltype") + RotatedAxis()
 p3 <- VlnPlot(gbm, features = c("nFeature_RNA", "percent.mt"), group.by = "celltype", pt.size = 0, ncol = 2)
-ggsave("output/figs/03_fig1_annotation.pdf", (p1 | p2) / p3, width = 14, height = 9, bg = "white")
+fig((p1 | p2) / p3, "03_fig1_annotation", 14, 9)
 ## >>> 參考答案 ------------------------------------------------------
 # 本課這份 GBM 5k 的結果（實跑驗證；13 群、移除整群 doublet 的 cluster 12 後剩 5,130 顆）：
 #   Glial (undetermined) 2,379（46.4%）／Macrophage 1,178（23.0%）／Oligodendrocyte 850（16.6%）

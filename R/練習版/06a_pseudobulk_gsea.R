@@ -5,7 +5,7 @@
 # 輸入：output/rds/05_gbm4_malignant.rds（05_infercnv.R）；若尚未跑 05（例如 JAGS 還沒裝），
 #       §0 會退而用 output/rds/04_gbm4_unintegrated.rds + 作者的 Neoplastic 標籤當替代惡性標籤
 # 輸出：output/rds/06_gbm4_final.rds；output/tables/06_de_<型別>.csv、06_de_summary_by_type.csv、
-#       06_gsea_all_types.csv、06_ora_go_all_types.csv；output/figs/06_*.png
+#       06_gsea_all_types.csv、06_ora_go_all_types.csv；output/figs/06_*（png 與 pdf 各一份）
 # 時間：本課這份資料實跑約 2 分鐘（enrichKEGG 需連網）
 # 套件：本版新增 ashr、reshape2、ggrepel（CRAN）與 clusterProfiler、org.Hs.eg.db、enrichplot（Bioc）——
 #       請先重跑 00_setup.R（已安裝的會自動略過），或執行下面的檢查提示
@@ -16,6 +16,11 @@
 # ---------------------------------------------------------------------
 library(Seurat); library(dplyr); library(ggplot2); library(patchwork)
 set.seed(1234)
+# 每張圖都存兩份：png 貼報告、pdf 是向量檔放大不糊。一律把「圖物件」傳進來，不要先印出來——
+# 直接印再 ggsave() 會在專案根目錄留下一個 Rplots.pdf（Rscript 的預設繪圖裝置就是 pdf）。
+fig <- function(p, name, w, h, dpi = 150) for (e in c("png", "pdf"))
+  ggsave(file.path("output/figs", paste0(name, ".", e)), p, width = w, height = h, dpi = dpi,
+         bg = "white", limitsize = FALSE)
 need <- c("ashr", "reshape2", "ggrepel", "DESeq2", "fgsea", "msigdbr", "speckle", "EnhancedVolcano",
           "clusterProfiler", "org.Hs.eg.db", "enrichplot", "data.table")
 miss <- need[!vapply(need, requireNamespace, logical(1), quietly = TRUE)]
@@ -42,7 +47,7 @@ prop <- gbm4@meta.data |> dplyr::count(patient, tissue, type) |>
         group_by(patient, tissue) |> mutate(frac = n / sum(n)) |> ungroup()
 p <- ggplot(prop, aes(tissue, frac, fill = type)) + geom_col(width = .8) +
      facet_wrap(~ patient, nrow = 1) + theme_classic() + labs(y = "fraction of cells")
-ggsave("output/figs/06_composition.png", p, width = 12, height = 4.5, dpi = 150, bg = "white")
+fig(p, "06_composition", 12, 4.5)
 
 # 檢定：比例是組成資料，以「樣本」為單位（8 個），配對設計
 library(speckle); library(limma)
@@ -168,7 +173,7 @@ plot.gene <- function(d, g) {
 top.genes <- head(foc.res$gene[!is.na(foc.res$padj)], 4)
 p <- wrap_plots(lapply(top.genes, function(g) plot.gene(de[[FOCUS]], g)), nrow = 1)
 FOCUS.f <- gsub("[^A-Za-z0-9]+", "_", FOCUS)          # 檔名用的安全字串
-ggsave(sprintf("output/figs/06_per_sample_dots_%s.png", FOCUS.f), p, width = 14, height = 4, dpi = 150, bg = "white")
+fig(p, sprintf("06_per_sample_dots_%s", FOCUS.f), 14, 4)
 # 看圖：四位病人方向一致嗎？一致的才是可信的差異。
 
 # 火山圖：每種細胞型別一張。x = 未收縮 log2FC（收縮版會把點壓到中間，形狀失真），y = -log10(padj)
@@ -188,11 +193,13 @@ volcano <- function(d, fc = 1, p = 0.05) {
                   legendPosition = "bottom", drawConnectors = TRUE, max.overlaps = 20)
 }
 vol <- lapply(de, volcano)
-ggsave("output/figs/06_volcano_all_types.png", wrap_plots(vol, ncol = 2),
-       width = 14, height = 6.5 * ceiling(length(vol) / 2), dpi = 120, bg = "white", limitsize = FALSE)
+# 欄數要跟著實際張數走：ncol 寫死 2 而只有一種型別過得了門檻時，畫布右半邊會是一大片空白，
+# 看起來像「有東西沒畫出來」。這份資料常常只有免疫細胞湊得出足夠的配對病人。
+nc <- min(2, length(vol))
+fig(wrap_plots(vol, ncol = nc), "06_volcano_all_types",
+    7 * nc, 6.5 * ceiling(length(vol) / nc), dpi = 120)
 for (ty in names(de))
-  ggsave(sprintf("output/figs/06_volcano_%s.png", gsub("[^A-Za-z0-9]+", "_", ty)), vol[[ty]],
-         width = 8, height = 7, dpi = 150, bg = "white")
+  fig(vol[[ty]], sprintf("06_volcano_%s", gsub("[^A-Za-z0-9]+", "_", ty)), 8, 7)
 # 讀火山圖（Q3 頁 40）：右上 = 核心較高且顯著、左上 = 邊緣較高且顯著；中間高高的一根 = 效應小但 p 小，
 # 通常是表現量高的基因（baseMean 大），要回頭看每樣本點圖確認四位病人方向是否一致。
 # 形狀異常的訊號：所有點擠成一條直柱（LFC 被過度收縮）、或只有正的一側（某個部位樣本幾乎沒有細胞）。
@@ -263,7 +270,7 @@ p <- ggplot(hm.df, aes(type, gsub("HALLMARK_", "", pathway), fill = NES)) +
      theme_classic() + theme(axis.text.x = element_text(angle = 30, hjust = 1)) +
      labs(x = NULL, y = NULL, title = "Hallmark GSEA: NES by cell type (core vs periphery)",
           subtitle = "red = higher in core; blue = higher in periphery; * padj<0.05, ** padj<0.01; faded = not significant; grey = not tested")
-ggsave("output/figs/06_gsea_hallmark_heatmap.png", p, width = 9, height = 0.28 * length(hm.top) + 2.5, dpi = 150, bg = "white")
+fig(p, "06_gsea_hallmark_heatmap", 9, 0.28 * length(hm.top) + 2.5)
 
 # 圖 B：每種型別的 GSEA 條圖（三個資料庫各取 |NES| 最大的前 8）
 gsea_bar <- function(ty) {
@@ -278,13 +285,13 @@ gsea_bar <- function(ty) {
                         if (de[[ty]]$inference.ok) "" else " [exploratory]"))
 }
 for (ty in names(de)) { p <- gsea_bar(ty); if (!is.null(p))
-  ggsave(sprintf("output/figs/06_gsea_bar_%s.png", gsub("[^A-Za-z0-9]+", "_", ty)), p, width = 8, height = 9, dpi = 150, bg = "white") }
+  fig(p, sprintf("06_gsea_bar_%s", gsub("[^A-Za-z0-9]+", "_", ty)), 8, 9) }
 
 # 圖 C：enrichment plot（running score）—— 一條 pathway 的「證據長什麼樣」
 r.foc <- rank_stat(foc.res)
 p <- plotEnrichment(gene.sets$Hallmark[["HALLMARK_HYPOXIA"]], r.foc) +
      labs(title = paste0(FOCUS, ": HALLMARK_HYPOXIA (core vs periphery)"))
-ggsave(sprintf("output/figs/06_gsea_hypoxia_%s.png", FOCUS.f), p, width = 6, height = 4, dpi = 150, bg = "white")
+fig(p, sprintf("06_gsea_hypoxia_%s", FOCUS.f), 6, 4)
 # 讀法：黑色 tick 是基因集成員在排序中的位置；綠線是 running score；峰值在左 = 富集在「核心較高」那端。
 # leading edge = 峰值之前的成員，就是真正在動的基因：
 foc.hyp <- gsea.all[type == FOCUS & pathway == "HALLMARK_HYPOXIA"]
@@ -336,8 +343,8 @@ ora_dot <- function(o, which = c("go", "kegg"), n = 12) {
 }
 for (nm in names(ora)) {
   f <- gsub("[^A-Za-z0-9]+", "_", nm)
-  p <- ora_dot(ora[[nm]], "go");   if (!is.null(p)) ggsave(sprintf("output/figs/06_ora_go_%s.png",   f), p, width = 8, height = 6, dpi = 150, bg = "white")
-  p <- ora_dot(ora[[nm]], "kegg"); if (!is.null(p)) ggsave(sprintf("output/figs/06_ora_kegg_%s.png", f), p, width = 8, height = 6, dpi = 150, bg = "white")
+  p <- ora_dot(ora[[nm]], "go");   if (!is.null(p)) fig(p, sprintf("06_ora_go_%s",   f), 8, 6)
+  p <- ora_dot(ora[[nm]], "kegg"); if (!is.null(p)) fig(p, sprintf("06_ora_kegg_%s", f), 8, 6)
 }
 # 讀 dotplot：x = GeneRatio（顯著基因裡落在此詞條的比例）、點大小 = 命中數、顏色 = padj。
 # 只看前幾名、GeneRatio 高又 padj 小的；命中數 3–5 個的詞條再顯著也先別寫進結論。
@@ -346,7 +353,7 @@ foc.up <- paste(FOCUS, "up")
 if (!is.null(ora[[foc.up]]) && nrow(as.data.frame(ora[[foc.up]]$go))) {
   p <- cnetplot(ora[[foc.up]]$go, showCategory = 5) +
        ggtitle(paste0(FOCUS, ", up in core: GO BP term-gene network"))
-  ggsave(sprintf("output/figs/06_ora_cnet_%s_up.png", FOCUS.f), p, width = 10, height = 8, dpi = 150, bg = "white")
+  fig(p, sprintf("06_ora_cnet_%s_up", FOCUS.f), 10, 8)
 }
 ora.tab <- data.table::rbindlist(lapply(ora, function(o) {
   g <- as.data.frame(o$go); if (!nrow(g)) return(NULL)
@@ -368,10 +375,8 @@ sessionInfo()
 # 交出去的東西：每種型別一份 DE 表（含 raw 與 shrunken LFC、baseMean、padj）、一張火山圖、
 # GSEA 總表（含 leading edge）、ORA 總表；全部由本腳本重生，output/ 裡沒有手工檔。
 write.csv(de.summary, "output/tables/06_de_summary_by_type.csv", row.names = FALSE)
-ggsave(sprintf("output/figs/06_volcano_%s.pdf", FOCUS.f), vol[[FOCUS]], width = 8, height = 7, bg = "white")
-ggsave(sprintf("output/figs/06_gsea_hypoxia_%s.pdf", FOCUS.f),
-       plotEnrichment(gene.sets$Hallmark[["HALLMARK_HYPOXIA"]], r.foc) + labs(title = paste0(FOCUS, ": Hypoxia")),
-       width = 6, height = 4, bg = "white")
+fig(vol[[FOCUS]], sprintf("06_volcano_%s", FOCUS.f), 8, 7)
+fig(plotEnrichment(gene.sets$Hallmark[["HALLMARK_HYPOXIA"]], r.foc) + labs(title = paste0(FOCUS, ": Hypoxia")), sprintf("06_gsea_hypoxia_%s", FOCUS.f), 6, 4)
 saveRDS(gbm4, "output/rds/06_gbm4_final.rds")
 
 # =====================================================================

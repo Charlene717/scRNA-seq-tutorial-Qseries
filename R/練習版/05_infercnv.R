@@ -3,7 +3,7 @@
 #
 # 對應影片：Q3 頁 21–28（§1 輸入與執行、§2 兩個數字、§3 三角驗證）
 # 輸入：output/rds/04_gbm4_unintegrated.rds（04_multipatient.R；用「未整合」那份）
-# 輸出：output/rds/05_infercnv/（inferCNV 原生輸出）、output/rds/05_gbm4_malignant.rds、output/figs/05_infercnv*.png
+# 輸出：output/rds/05_infercnv/（inferCNV 原生輸出）、output/rds/05_gbm4_malignant.rds、output/figs/05_*（png 與 pdf 各一份）
 # 時間：inferCNV 本課這份資料實跑約 10 分鐘（denoise、無 HMM）；機器與細胞數不同會差很多
 # 注意：inferCNV 底層的 rjags 需要「系統層級」的 JAGS 程式（不是 R 套件，R 裝不了它），
 #       必須先在作業系統安裝 JAGS 4.x 再重開 R；未安裝的話本腳本會在 §1 直接停下並提示。
@@ -15,6 +15,11 @@
 # ---------------------------------------------------------------------
 library(Seurat); library(dplyr); library(ggplot2)
 set.seed(1234)
+# 每張圖都存兩份：png 貼報告、pdf 是向量檔放大不糊。一律把「圖物件」傳進來，不要先印出來——
+# 直接印再 ggsave() 會在專案根目錄留下一個 Rplots.pdf（Rscript 的預設繪圖裝置就是 pdf）。
+fig <- function(p, name, w, h, dpi = 150) for (e in c("png", "pdf"))
+  ggsave(file.path("output/figs", paste0(name, ".", e)), p, width = w, height = h, dpi = dpi,
+         bg = "white", limitsize = FALSE)
 gbm4 <- readRDS("output/rds/04_gbm4_unintegrated.rds")
 
 ## ---- 1. run-infercnv ----------------------------------------------- Q3 頁 22–24
@@ -123,6 +128,7 @@ obj <- infercnv::run(obj,
 # 輸出的 infercnv.png 就是熱圖：上半參考（平）、下半四位病人；看 chr7 gain / chr10 loss。
 # 熱圖是 inferCNV 自己寫在 out_dir 裡的，檔名沒有腳本編號。複製一份到 figs/ 並補上 05_ 前綴，
 # 交付時所有的圖就都在同一個資料夾，不用再去翻原生輸出。
+# 這三張只有 png：它們是 inferCNV 直接畫出來的點陣圖，不是本腳本用 fig() 存的，所以沒有 pdf 版。
 for (f in c("infercnv.png", "infercnv.preliminary.png", "infercnv_subclusters.png")) {
   if (file.exists(file.path(out.dir, f)))
     file.copy(file.path(out.dir, f), file.path("output/figs", sub("^infercnv", "05_infercnv", f)), overwrite = TRUE)
@@ -206,7 +212,7 @@ p <- ggplot(gbm4@meta.data, aes(cnv.score, cnv.cor, colour = celltype_author)) +
               label = sprintf("cnv.score > %.4f", s.hi)) +
      coord_cartesian(xlim = c(0, x.max)) + theme_classic() +
      labs(x = "CNV score (deviation from reference)", y = "CNV correlation (with malignant profile)")
-ggsave("output/figs/05_cnv_scatter.png", p, width = 8, height = 6, dpi = 150, bg = "white")
+fig(p, "05_cnv_scatter", 8, 6)
 # 看圖：右上（兩條虛線之外）= 惡性；點線以下 = 正常；中間那條帶 = 不確定。
 # 分位數只是起點：如果你的圖上兩群之間有明顯的谷，把線移到谷底會比分位數更好。
 
@@ -264,7 +270,7 @@ cat(sprintf("參考組落進 unresolved 的比例：%.1f%%（c.lo 取 90 分位 
 ## （這裡在解答版有一段參考答案；先自己跑出數字，再回去對照）
 
 p <- DimPlot(gbm4, reduction = "umap.raw", group.by = "malignant", cols = c("#C0392B", "#1A6B5A", "grey70"))
-ggsave("output/figs/05_umap_malignant.png", p, width = 7, height = 6, dpi = 150, bg = "white")
+fig(p, "05_umap_malignant", 7, 6)
 saveRDS(gbm4, "output/rds/05_gbm4_malignant.rds")
 sessionInfo()
 
