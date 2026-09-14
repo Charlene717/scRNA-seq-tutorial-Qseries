@@ -4,7 +4,7 @@
 # 對應影片：Q3 頁 76–78（§1 PROGENy 路徑活性與條件比較、§2 SCENIC regulon）
 # 輸入：output/rds/06_gbm4_final.rds
 # 輸出：output/figs/09_*（png 與 pdf 各一份）、output/tables/09_progeny_*.csv
-# 時間：本課這份資料實跑約 0.6 分鐘；SCENIC（pySCENIC，Python）數小時，為選配
+# 時間：同一台機器三輪實測約 1 分鐘；SCENIC（pySCENIC，Python）數小時，為選配
 # PROGENy 問「哪條訊號路徑活著」（footprint 基因）；SCENIC 問「哪個轉錄因子在驅動」（regulon）。
 # =====================================================================
 # ---------------------------------------------------------------------

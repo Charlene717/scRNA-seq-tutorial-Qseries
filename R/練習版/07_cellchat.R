@@ -4,7 +4,7 @@
 # 對應影片：Q3 頁 58–70（§1 跑一次 CellChat、§2 路徑層級與六種圖、§3 兩條件比較、§4 LIANA）
 # 輸入：output/rds/06_gbm4_final.rds（06a_pseudobulk_gsea.R；含 malignant 標籤與 type 欄）
 # 輸出：output/rds/07_cellchat/<patient>_<tissue>_min<MIN.CELLS>.rds、output/tables/07_liana_top500.csv、output/figs/07_*（png 與 pdf 各一份）
-# 時間：本課這份資料實跑，八個樣本（其中一個群數不足被跳過）連同六種圖與 LIANA 全跑完約 4 分鐘——
+# 時間：同一台機器三輪實測 4–10 分鐘（八個樣本，其中一個群數不足被跳過，連同六種圖與 LIANA）——
 #       這份資料每個樣本只有 52–800 顆細胞，而且只用 Secreted Signaling 這個子集。
 #       換成 10x 的大樣本會慢很多（單一樣本數萬顆、群又多時，一個樣本就可能要十幾分鐘），
 #       那時才需要 REUSE.RDS：跑過的樣本存成 rds，第二次執行直接讀回，只有 06 的輸出更新時才重算。

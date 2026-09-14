@@ -5,7 +5,7 @@
 # 輸入：output/rds/06_gbm4_final.rds
 # 輸出：output/figs/08_*（png 與 pdf 各一份）、output/tables/08_traj_association.csv
 #       （有分支時另加 08_pseudotime_lineages.pdf、08_traj_association_bylineage.csv、08_traj_diffend.csv）
-# 時間：本課這份資料實跑 §1 + §3 共約 4 分鐘（每多一條 lineage，fitGAM 約等比例增加）；
+# 時間：同一台機器三輪實測 §1 + §3 共 4–9 分鐘（每多一條 lineage，fitGAM 約等比例增加）；
 #       §2 的 Monocle3 為選配，未安裝時會跳過
 # 安裝（選配段）：見 00_setup.R——monocle3 + SeuratWrappers（GitHub）、monocle（Bioconductor）
 # 前提：軌跡假設「連續過程」；跨病人混做會把病人差異當成軌跡，所以只在一位病人的惡性細胞內做。
