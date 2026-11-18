@@ -95,7 +95,17 @@ table(gbm4$celltype_author)
 #   以及最細只分到哪一層——讀的人才知道你的結論適用到什麼程度。
 p <- VlnPlot(gbm4, c("nFeature_RNA", "nCount_RNA", "percent.mt"), group.by = "patient", pt.size = 0, ncol = 3)
 fig(p, "04_qc_by_patient", 13, 4)
-# 作者已 QC；這裡若有極端離群（percent.mt > median + 3×MAD）可再濾，並記錄。
+# 看圖：第三格 percent.mt 是一條 0 的平線，四位病人都一樣。先別把它讀成「粒線體 QC 很乾淨」——
+# 四位病人、三千多顆細胞一顆都沒有粒線體 read，不合理。去數一下：sum(grepl("^MT-", rownames(gbm4)))
+# 會是 0；換成 ND1、COX1、CYTB 這種 RefSeq 命名去找也沒有。這份作者釋出的 count 表裡
+# 「根本沒有粒線體基因體上的基因」，只剩 MTRNR2L* 這類核基因組上的假基因。
+# 原因在註釋，不在細胞：hg19 時代最常用的 UCSC refGene（RefSeq Genes）是用 RefSeq 的 mRNA 紀錄建的，
+# 粒線體的 13 個蛋白質編碼基因在 RefSeq 裡沒有 mRNA 紀錄，所以那份 GTF 根本不含它們；
+# 用 GENCODE 或 Ensembl 對齊才會有 MT-。作者是 STAR + HTSeq 對 hg19（GEO 有寫），表裡連 HTSeq 的
+# 統計列都還在，所以是定量時就沒有，不是事後拿掉。
+# 教訓：拿到公開的處理後矩陣，先數一數你要用的基因在不在，再看數字。一條 0 的平線不是 QC 通過，
+# 是「這個指標在這份資料上算不出來」。作者論文有自己的過濾，這裡若要再濾極端離群只能用 nFeature / nCount，
+# 方法段要寫明「作者矩陣不含粒線體基因，未做粒線體 QC」。
 
 ## ---- 3. baseline --------------------------------------------------- Q3 頁 11–12
 # 先跑一次「不整合」的流程，留基線；之後惡性細胞的分析回來用這一份
@@ -218,5 +228,8 @@ saveRDS(gbm4, "output/rds/04_gbm4_integrated.rds")
 #      （提示：P2RY12 / TMEM119 vs CD163 / LYZ）
 #  4-5 §5 的 LISI：Neoplastic 與 Immune 的中位數各是多少？把 Harmony 的 theta 調到 4 重跑，
 #      Neoplastic 的 LISI 變成多少？這代表什麼？
+#  4-6 §2 的 percent.mt 整欄是 0。先不要看上面的說明，自己查：rownames(gbm4) 裡有哪些 MT 開頭的基因？
+#      它們是粒線體基因體上的基因嗎？再到 GEO 看這份資料的 data processing 寫了什麼。
+#      寫一段方法段，交代這份資料為什麼沒做粒線體 QC。
 #  進階 讀 Neftel 2019 的 Methods：他們如何處理病人效應？跟本腳本的原則一致嗎？
 # =====================================================================
