@@ -215,12 +215,12 @@ colnames(glial@meta.data)[grep("^state_", colnames(glial@meta.data))] <- names(n
 # 兩軸表示（Neftel Fig. 2 的做法，簡化版）：
 sc <- glial@meta.data[, names(neftel)]
 glial$MES <- pmax(sc$MES1, sc$MES2); glial$NPC <- pmax(sc$NPC1, sc$NPC2)
-glial$axis_x <- (pmax(glial$OPC, glial$NPC) - pmax(glial$AC, glial$MES))   # 左 OPC/NPC，右 AC/MES
+glial$axis_x <- (pmax(glial$OPC, glial$NPC) - pmax(glial$AC, glial$MES))   # 左 AC/MES，右 OPC/NPC
 glial$axis_y <- ifelse(glial$axis_x > 0, glial$NPC - glial$OPC, glial$MES - glial$AC)
 glial$state  <- apply(glial@meta.data[, c("MES", "AC", "OPC", "NPC")], 1, function(v) names(v)[which.max(v)])
 p <- ggplot(glial@meta.data, aes(axis_x, axis_y, colour = state)) + geom_point(size = .6, alpha = .6) +
      geom_hline(yintercept = 0) + geom_vline(xintercept = 0) + theme_classic() +
-     labs(x = "← OPC/NPC-like   AC/MES-like →", y = "state strength")
+     labs(x = "← AC/MES-like   OPC/NPC-like →", y = "state strength")
 fig(p, "03_neftel_states", 7, 6)
 table(glial$state, glial$Phase)                       # 週期一起看：增殖細胞落在哪個狀態？
 ## （這裡在解答版有一段參考答案；先自己跑出數字，再回去對照）
