@@ -138,6 +138,24 @@ gbm$celltype <- Idents(gbm)
 gbm$doublet_status[as.character(gbm$seurat_clusters) %in% cand.dbl] <- "Candidate"
 gbm$doublet_status[as.character(gbm$seurat_clusters) %in% conf.dbl] <- "Confirmed"
 # 只有 Confirmed 會被移除；Candidate 留在資料裡，方法段要寫清楚哪幾群被刪、依據是什麼。
+#
+# ★ 刪除的「時間點」是本課刻意安排的，跟多數教學不一樣，要特別講清楚：
+#   教科書順序是 QC 時偵測、當場刪掉個別細胞、再分群。本課是 01 只標記 → 02 分群後用群層級證據診斷
+#   → 03 命名時才整群移除。差在三件事：
+#   ① 刪的是「群」，不是「被標記的細胞」。01 的 DoubletFinder 標了 198 顆、scDblFinder 415 顆，
+#      但這裡只拿掉群 12 的 131 顆（其中 79 顆有被 DoubletFinder 標到）；其餘約 119 顆被標記的細胞
+#      留在資料裡，之後的 marker 表、免疫亞群、Neftel 分數都含著它們。細胞層級的分數在本課只是證據，
+#      不是判決——腫瘤資料裡誤判集中在惡性與增殖細胞（群 7 增殖群 0.20、群 9 基質群 0.31），
+#      照分數刪個別細胞，砍掉的就是你最想留的那批。
+#   ② 刪完「不重新分群」。02 的 HVG、PCA、UMAP、分群都是在群 12 還在的時候算的，刪掉之後直接沿用。
+#      這在本例站得住：群 12 是一個獨立、緊湊的小群（131 顆、2.5%），拿掉它幾乎不動其他群的結構。
+#      但換成「刪散在各群裡的個別細胞」或「刪一個卡在兩大群之間的大群」，就該從 HVG 重跑一遍，
+#      否則留下來的細胞是在一個包含已刪細胞的空間裡被分的群。
+#   ③ 細胞數要寫清楚是哪一個時間點的。01 之後 5,261 顆、03 移除後 5,130 顆；02 的每群 QC 表、
+#      clustree、UMAP 圖是 5,261 的版本，03 之後的 marker 表、組成、Neftel 分數是 5,130 的版本。
+#      方法段寫「分群後移除一個 doublet 群（n = 131）」，兩個數字都要出現。
+#   這樣安排的代價是 02 的圖裡會看到那個群；換來的是能用群層級的三項證據判斷，而不是信任一個分數。
+#   如果還有存疑的群，05 拿到 CNV 之後可以回頭再判一次（見 02 §4c）。
 if (any(gbm$celltype == "DOUBLET")) gbm <- subset(gbm, subset = celltype != "DOUBLET")
 gbm$celltype <- droplevels(gbm$celltype); Idents(gbm) <- "celltype"   # 清掉空的 level，圖例才不會多出空類別
 p <- DimPlot(gbm, label = TRUE, repel = TRUE) + NoLegend()
